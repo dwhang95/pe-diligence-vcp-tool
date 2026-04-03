@@ -2,8 +2,14 @@
 formatter.py — Assemble generated sections into the final brief markdown.
 """
 
+import re
 from pathlib import Path
 from datetime import date
+
+
+def _strip_leading_header(text: str) -> str:
+    """Remove a leading markdown header line if the model echoed the section title."""
+    return re.sub(r"^##+ .+\n+", "", text.strip())
 
 
 def assemble_brief(
@@ -33,12 +39,12 @@ def assemble_brief(
     brief = brief.replace("{date}", today)
     brief = brief.replace("{industry}", industry)
     brief = brief.replace("{ev_range}", ev_range)
-    brief = brief.replace("{exec_summary}", sections["exec_summary"])
-    brief = brief.replace("{risk_flags}", sections["risk_flags"])
-    brief = brief.replace("{it_systems}", sections["it_systems"])
-    brief = brief.replace("{value_creation}", sections["value_creation"])
-    brief = brief.replace("{100_day_plan}", sections["100_day_plan"])
-    brief = brief.replace("{diligence_questions}", sections["diligence_questions"])
+    brief = brief.replace("{exec_summary}", _strip_leading_header(sections["exec_summary"]))
+    brief = brief.replace("{risk_flags}", _strip_leading_header(sections["risk_flags"]))
+    brief = brief.replace("{it_systems}", _strip_leading_header(sections["it_systems"]))
+    brief = brief.replace("{value_creation}", _strip_leading_header(sections["value_creation"]))
+    brief = brief.replace("{100_day_plan}", _strip_leading_header(sections["100_day_plan"]))
+    brief = brief.replace("{diligence_questions}", _strip_leading_header(sections["diligence_questions"]))
     brief = brief.replace("{data_sources}", data_sources)
 
     return brief, slug, today
