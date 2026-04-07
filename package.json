@@ -1,0 +1,12 @@
+{
+  "name": "pe-diligence-tool",
+  "version": "2.0.0",
+  "description": "PE ops due diligence brief generator — Node.js scraper dependencies",
+  "private": true,
+  "scripts": {
+    "scrape-news": "node src/data_sources/news_scraper.js"
+  },
+  "dependencies": {
+    "puppeteer": "^24.0.0"
+  }
+}

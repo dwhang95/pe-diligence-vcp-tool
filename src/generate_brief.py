@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-PE Ops Due Diligence Brief Generator
+PE Ops Due Diligence Brief Generator — v2
 
 Usage:
     python src/generate_brief.py \
@@ -27,6 +27,12 @@ try:
     load_dotenv(Path(__file__).parent.parent / ".env")
 except ImportError:
     pass  # dotenv not installed — fall through to os.environ
+
+# Data source clients (v2)
+sys.path.insert(0, str(Path(__file__).parent))
+from data_sources.sec_edgar import fetch_sec_comps, SICLookup
+from data_sources.news import fetch_recent_news, NewsResult
+from data_sources.bls import fetch_bls_benchmarks
 
 # ---------------------------------------------------------------------------
 # Paths
@@ -101,11 +107,15 @@ async def run_research_agent(
     """
     print(f"  [research] Starting web research for {company_name}...")
 
-    prompt = load_template("research_prompt").format(
+    class SafeDict(dict):
+        def __missing__(self, key):
+            return f"{{{key}}}"
+
+    prompt = load_template("research_prompt").format_map(SafeDict(
         company_name=company_name,
         description=description,
         industry=industry,
-    )
+    ))
 
     messages: list[dict] = [{"role": "user", "content": prompt}]
     all_sources: list[str] = []
@@ -151,28 +161,39 @@ async def generate_section(
     system_prompt: str,
     section_name: str,
     context: dict,
+    max_retries: int = 6,
 ) -> str:
-    """Generate a single section of the brief via a single Claude call."""
+    """
+    Generate a single section of the brief via a single Claude call.
+    Auto-retries on 429 rate-limit errors with exponential backoff (15s, 30s, 60s...).
+    """
     print(f"  [generate] Writing: {section_name}...")
 
     section_template = load_template(section_name, section=True)
 
-    # .format_map with a defaultdict-style fallback so missing keys don't crash
     class SafeDict(dict):
         def __missing__(self, key):
             return f"{{{key}}}"
 
     user_prompt = section_template.format_map(SafeDict(context))
 
-    response = await client.messages.create(
-        model=MODEL,
-        max_tokens=4096,
-        system=system_prompt,
-        messages=[{"role": "user", "content": user_prompt}],
-    )
-
-    raw = response.content[0].text
-    return strip_leading_section_header(raw)
+    wait = 15  # initial retry wait, seconds
+    for attempt in range(max_retries):
+        try:
+            response = await client.messages.create(
+                model=MODEL,
+                max_tokens=4096,
+                system=system_prompt,
+                messages=[{"role": "user", "content": user_prompt}],
+            )
+            raw = response.content[0].text
+            return strip_leading_section_header(raw)
+        except anthropic.RateLimitError:
+            if attempt == max_retries - 1:
+                raise
+            print(f"  [generate] Rate limit hit on {section_name} — waiting {wait}s...")
+            await asyncio.sleep(wait)
+            wait = min(wait * 2, 120)
 
 
 # ---------------------------------------------------------------------------
@@ -194,23 +215,74 @@ async def generate_brief(
     client = anthropic.AsyncAnthropic(api_key=api_key)
 
     # -----------------------------------------------------------------------
-    # Phase 1: Web research + template loading in parallel
+    # Phase 1: Web research + real data fetches + template loading — all parallel
     # -----------------------------------------------------------------------
-    print("\n[Phase 1] Web research + loading templates in parallel...")
+    print("\n[Phase 1] Web research, data pulls, and template loading in parallel...")
 
     async def load_static_templates() -> tuple[str, str]:
         system_prompt = load_template("system_prompt")
         brief_template = (TEMPLATES_DIR / "brief_template.md").read_text()
         return system_prompt, brief_template
 
-    (research_text, sources), (system_prompt, brief_template) = await asyncio.gather(
-        run_research_agent(client, company_name, description, industry),
-        load_static_templates(),
+    async def fetch_real_data() -> tuple[object, object, object]:
+        """Fetch SEC comps, news, and BLS benchmarks concurrently."""
+        sec_comps, news, bls = await asyncio.gather(
+            fetch_sec_comps(industry),
+            fetch_recent_news(company_name),
+            fetch_bls_benchmarks(industry),
+        )
+        return sec_comps, news, bls
+
+    (research_text, sources), (system_prompt, brief_template), (sec_comps, news_result, bls_bench) = (
+        await asyncio.gather(
+            run_research_agent(client, company_name, description, industry),
+            load_static_templates(),
+            fetch_real_data(),
+        )
     )
+
+    # Log data pull results
+    sic_code, _ = SICLookup.lookup(industry)
+    print(f"  [data] SEC EDGAR: {len(sec_comps.comps)} comps found (SIC {sec_comps.sic_code})"
+          + (f" — {sec_comps.error}" if sec_comps.error else ""))
+    print(f"  [data] News: {len(news_result.articles)} articles via {news_result.source_used}"
+          + (f" — {news_result.error}" if news_result.error else ""))
+    print(f"  [data] BLS: {bls_bench.industry_label}"
+          + (f" — {bls_bench.error}" if bls_bench.error else ""))
 
     research_summary = research_text.strip() if research_text.strip() else (
         "No public research data found — assess all hypotheses in management diligence."
     )
+
+    # Build context blocks for the comps section prompt
+    sec_comps_markdown = (
+        f"**SIC {sec_comps.sic_code} — {sec_comps.sic_label}**\n\n"
+        + sec_comps.to_markdown_table()
+        if not sec_comps.error
+        else f"_SEC EDGAR data unavailable: {sec_comps.error}_"
+    )
+
+    bls_benchmark_markdown = (
+        bls_bench.to_markdown()
+        if not bls_bench.error
+        else f"_BLS data unavailable: {bls_bench.error}_"
+    )
+
+    # Cap news context: only pass risk flags + top 10 items to stay under token budget.
+    # Full article list is stored in the NewsResult but doesn't need to go to the LLM.
+    top_articles = sorted(
+        news_result.articles,
+        key=lambda a: (not a.is_risk_flag, a.date),
+        reverse=False,
+    )[:12]
+    news_trimmed = NewsResult(
+        company_name=news_result.company_name,
+        days_searched=news_result.days_searched,
+        articles=top_articles,
+        source_used=news_result.source_used,
+        error=news_result.error,
+    )
+    news_summary_markdown = news_trimmed.to_summary_markdown()
 
     base_context = {
         "company_name": company_name,
@@ -219,24 +291,28 @@ async def generate_brief(
         "ev_range": ev_range,
         "context_notes": context_notes or "None provided.",
         "research_summary": research_summary,
+        # Real data for Section 3
+        "sec_comps_markdown": sec_comps_markdown,
+        "bls_benchmark_markdown": bls_benchmark_markdown,
+        "news_summary_markdown": news_summary_markdown,
     }
 
     # -----------------------------------------------------------------------
-    # Phase 2: Sections 1–4 in parallel (no cross-section dependencies)
+    # Phase 2: Sections generated sequentially with auto-retry on rate limits.
+    # Parallel generation hits the 30k token/min limit too easily; sequential
+    # with backoff is more reliable across different API tier sizes.
     # -----------------------------------------------------------------------
-    print("\n[Phase 2] Generating sections 1–4 in parallel...")
+    print("\n[Phase 2] Generating sections 1–5 sequentially...")
+    exec_summary   = await generate_section(client, system_prompt, "exec_summary",    base_context)
+    risk_flags     = await generate_section(client, system_prompt, "risk_flags",      base_context)
+    comps_benchmarks = await generate_section(client, system_prompt, "comps_benchmarks", base_context)
+    it_systems     = await generate_section(client, system_prompt, "it_systems",      base_context)
+    value_creation = await generate_section(client, system_prompt, "value_creation",  base_context)
 
-    exec_summary, risk_flags, it_systems, value_creation = await asyncio.gather(
-        generate_section(client, system_prompt, "exec_summary", base_context),
-        generate_section(client, system_prompt, "risk_flags", base_context),
-        generate_section(client, system_prompt, "it_systems", base_context),
-        generate_section(client, system_prompt, "value_creation", base_context),
-    )
-
     # -----------------------------------------------------------------------
-    # Phase 3: Sections 5–6 in parallel (depend on risk_flags + value_creation)
+    # Phase 3: Sections 6–7 sequentially (depend on risk_flags + value_creation)
     # -----------------------------------------------------------------------
-    print("\n[Phase 3] Generating sections 5–6 in parallel...")
+    print("\n[Phase 3] Generating sections 6–7...")
 
     extended_context = {
         **base_context,
@@ -244,10 +320,8 @@ async def generate_brief(
         "vc_levers_summary": value_creation,
     }
 
-    day_plan, diligence_questions = await asyncio.gather(
-        generate_section(client, system_prompt, "100_day_plan", extended_context),
-        generate_section(client, system_prompt, "diligence_questions", extended_context),
-    )
+    day_plan          = await generate_section(client, system_prompt, "100_day_plan",        extended_context)
+    diligence_questions = await generate_section(client, system_prompt, "diligence_questions", extended_context)
 
     # -----------------------------------------------------------------------
     # Phase 4: Assemble and write output
@@ -256,11 +330,16 @@ async def generate_brief(
 
     today = date.today().strftime("%Y-%m-%d")
 
-    sources_md = (
-        "\n".join(f"- {url}" for url in dict.fromkeys(sources))  # deduplicate, preserve order
-        if sources
-        else "- Desk research based on LLM training data (no live URLs captured)"
-    )
+    # Merge web search sources with real data sources
+    source_lines = list(dict.fromkeys(f"- {url}" for url in sources)) if sources else [
+        "- Desk research based on LLM training data (no live URLs captured)"
+    ]
+    source_lines += [
+        f"- SEC EDGAR XBRL API — SIC {sec_comps.sic_code} public comp financials",
+        f"- BLS CES API — {bls_bench.industry_label} labor benchmarks",
+        f"- News: {news_result.source_used} ({len(news_result.articles)} articles)",
+    ]
+    sources_md = "\n".join(source_lines)
 
     brief = brief_template.format_map({
         "company_name": company_name,
@@ -269,6 +348,7 @@ async def generate_brief(
         "ev_range": ev_range,
         "exec_summary": exec_summary,
         "risk_flags": risk_flags,
+        "comps_benchmarks": comps_benchmarks,
         "it_systems": it_systems,
         "value_creation": value_creation,
         "100_day_plan": day_plan,
