@@ -1,16 +1,21 @@
 """
-app.py — Streamlit UI for the PE Ops Due Diligence Brief Generator.
+app.py — Streamlit UI for the PE Ops Tool Suite.
+
+Modules:
+  Tab 1 — Deal Diligence Brief (Module 1)
+  Tab 2 — Value Creation Planner (Module 2)
 
 Run with:
     streamlit run src/app.py
 """
 
 import asyncio
+import io
+import re
 import sys
 import threading
 import queue
 from datetime import datetime
-from io import StringIO
 from pathlib import Path
 
 import streamlit as st
@@ -26,7 +31,7 @@ sys.path.insert(0, str(BASE_DIR / "src"))
 # Page config — must be the first Streamlit call
 # ---------------------------------------------------------------------------
 st.set_page_config(
-    page_title="PE Ops Brief Generator",
+    page_title="PE Ops Tool Suite",
     page_icon="📋",
     layout="wide",
     initial_sidebar_state="collapsed",
@@ -51,7 +56,7 @@ st.markdown("""
   .pe-header {
     border-bottom: 1px solid #2a2d35;
     padding-bottom: 1.2rem;
-    margin-bottom: 2rem;
+    margin-bottom: 1.5rem;
   }
   .pe-header h1 {
     font-size: 1.65rem;
@@ -64,6 +69,27 @@ st.markdown("""
     color: #8b8fa8;
     font-size: 0.88rem;
     margin: 0;
+  }
+
+  /* ── Tabs ── */
+  [data-testid="stTabs"] [data-baseweb="tab-list"] {
+    gap: 0;
+    border-bottom: 1px solid #2a2d35;
+    margin-bottom: 1.5rem;
+  }
+  [data-testid="stTabs"] [data-baseweb="tab"] {
+    background: transparent !important;
+    color: #6b7090 !important;
+    font-size: 0.85rem;
+    font-weight: 600;
+    padding: 0.6rem 1.4rem;
+    border-bottom: 2px solid transparent !important;
+    border-radius: 0 !important;
+  }
+  [data-testid="stTabs"] [aria-selected="true"] {
+    color: #c9a84c !important;
+    border-bottom: 2px solid #c9a84c !important;
+    background: transparent !important;
   }
 
   /* ── Section labels ── */
@@ -89,6 +115,7 @@ st.markdown("""
   [data-testid="stTextInput"] input,
   [data-testid="stTextArea"] textarea,
   [data-testid="stSelectbox"] select,
+  [data-testid="stNumberInput"] input,
   div[data-baseweb="select"] {
     background-color: #1c2030 !important;
     border: 1px solid #2f3347 !important;
@@ -96,11 +123,13 @@ st.markdown("""
     color: #e8e8e8 !important;
   }
   [data-testid="stTextInput"] input:focus,
-  [data-testid="stTextArea"] textarea:focus {
+  [data-testid="stTextArea"] textarea:focus,
+  [data-testid="stNumberInput"] input:focus {
     border-color: #c9a84c !important;
     box-shadow: 0 0 0 2px rgba(201,168,76,0.18) !important;
   }
-  label, .stTextInput label, .stTextArea label, .stSelectbox label {
+  label, .stTextInput label, .stTextArea label, .stSelectbox label,
+  .stNumberInput label {
     color: #b0b5c9 !important;
     font-size: 0.82rem !important;
     font-weight: 500 !important;
@@ -143,7 +172,7 @@ st.markdown("""
     border-radius: 6px !important;
   }
 
-  /* ── Brief output area ── */
+  /* ── Brief / VCP output area ── */
   .brief-wrapper {
     background: #161b27;
     border: 1px solid #2a2d35;
@@ -160,6 +189,8 @@ st.markdown("""
   .brief-wrapper td { padding: 0.45rem 0.75rem; border-bottom: 1px solid #242836; color: #c5c9dc; font-size: 0.85rem; }
   .brief-wrapper code { background: #1c2030; border-radius: 3px; padding: 0.1em 0.35em; font-size: 0.85em; }
   .brief-wrapper blockquote { border-left: 3px solid #c9a84c; margin: 0.75rem 0; padding-left: 1rem; color: #8b8fa8; }
+  .brief-wrapper pre { background: #1c2030; border-radius: 5px; padding: 1rem; overflow-x: auto; }
+  .brief-wrapper pre code { background: transparent; padding: 0; font-size: 0.82rem; color: #b8c0d8; }
 
   /* ── Divider ── */
   hr { border-color: #2a2d35 !important; }
@@ -176,79 +207,290 @@ st.markdown("""
 
 
 # ---------------------------------------------------------------------------
+# Document extraction utilities
+# ---------------------------------------------------------------------------
+
+def extract_text_from_upload(uploaded_file) -> str:
+    """Extract plain text from a .docx or .pdf upload."""
+    if uploaded_file is None:
+        return ""
+    name = uploaded_file.name.lower()
+    data = uploaded_file.read()
+    uploaded_file.seek(0)  # reset so Streamlit can re-read if needed
+
+    if name.endswith(".docx"):
+        try:
+            from docx import Document
+            doc = Document(io.BytesIO(data))
+            return "\n".join(p.text for p in doc.paragraphs if p.text.strip())
+        except Exception as e:
+            st.warning(f"Could not parse .docx: {e}")
+            return ""
+
+    elif name.endswith(".pdf"):
+        try:
+            from pypdf import PdfReader
+            reader = PdfReader(io.BytesIO(data))
+            pages = [page.extract_text() or "" for page in reader.pages]
+            return "\n".join(pages)
+        except Exception as e:
+            st.warning(f"Could not parse .pdf: {e}")
+            return ""
+
+    return ""
+
+
+# ---------------------------------------------------------------------------
+# Word export utility
+# ---------------------------------------------------------------------------
+
+def markdown_to_docx(markdown_text: str, company_name: str) -> bytes:
+    """
+    Convert markdown to a styled .docx.
+    Handles: # h1, ## h2, ### h3, **bold**, *italic*, tables, bullet lists, horizontal rules.
+    Returns raw bytes of the .docx file.
+    """
+    from docx import Document
+    from docx.shared import Pt, RGBColor, Inches
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+    from docx.oxml.ns import qn
+    from docx.oxml import OxmlElement
+
+    NAVY   = RGBColor(0x1a, 0x27, 0x4a)
+    GOLD   = RGBColor(0xc9, 0xa8, 0x4c)
+    BODY   = RGBColor(0x2d, 0x2d, 0x2d)
+    SUBTLE = RGBColor(0x6b, 0x6b, 0x6b)
+
+    doc = Document()
+
+    # --- Page margins ---
+    for section in doc.sections:
+        section.top_margin    = Inches(1.0)
+        section.bottom_margin = Inches(1.0)
+        section.left_margin   = Inches(1.15)
+        section.right_margin  = Inches(1.15)
+
+    # --- Base style ---
+    normal = doc.styles["Normal"]
+    normal.font.name = "Calibri"
+    normal.font.size = Pt(10.5)
+    normal.font.color.rgb = BODY
+
+    def set_run_formatting(run, bold=False, italic=False, color=None):
+        run.font.name = "Calibri"
+        run.bold = bold
+        run.italic = italic
+        if color:
+            run.font.color.rgb = color
+
+    def add_inline_text(para, text):
+        """Parse **bold**, *italic*, and plain text within a line."""
+        pattern = re.compile(r"(\*\*(.+?)\*\*|\*(.+?)\*|(`[^`]+`))")
+        pos = 0
+        for m in pattern.finditer(text):
+            if m.start() > pos:
+                run = para.add_run(text[pos:m.start()])
+                set_run_formatting(run)
+            full = m.group(0)
+            if full.startswith("**"):
+                run = para.add_run(m.group(2))
+                set_run_formatting(run, bold=True)
+            elif full.startswith("*"):
+                run = para.add_run(m.group(3))
+                set_run_formatting(run, italic=True)
+            else:
+                run = para.add_run(m.group(0).strip("`"))
+                run.font.name = "Courier New"
+                run.font.size = Pt(9)
+            pos = m.end()
+        if pos < len(text):
+            run = para.add_run(text[pos:])
+            set_run_formatting(run)
+
+    def add_table_from_md(lines):
+        """Parse a markdown table block and add it to the doc."""
+        rows = []
+        for line in lines:
+            if re.match(r"^\|[-:| ]+\|$", line.strip()):
+                continue  # separator row
+            cells = [c.strip() for c in line.strip().strip("|").split("|")]
+            rows.append(cells)
+        if not rows:
+            return
+        cols = max(len(r) for r in rows)
+        tbl = doc.add_table(rows=len(rows), cols=cols)
+        tbl.style = "Table Grid"
+        for i, row_data in enumerate(rows):
+            for j, cell_text in enumerate(row_data):
+                if j >= cols:
+                    break
+                cell = tbl.cell(i, j)
+                cell.text = ""
+                para = cell.paragraphs[0]
+                para.paragraph_format.space_before = Pt(3)
+                para.paragraph_format.space_after  = Pt(3)
+                add_inline_text(para, cell_text)
+                if i == 0:
+                    for run in para.runs:
+                        run.bold = True
+                        run.font.color.rgb = NAVY
+                    # shade header row
+                    tc = cell._tc
+                    tcPr = tc.get_or_add_tcPr()
+                    shd = OxmlElement("w:shd")
+                    shd.set(qn("w:fill"), "E8ECF4")
+                    shd.set(qn("w:val"), "clear")
+                    tcPr.append(shd)
+
+    # --- Parse lines ---
+    lines = markdown_text.splitlines()
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        stripped = line.strip()
+
+        # Table detection: peek ahead to collect full table block
+        if stripped.startswith("|") and stripped.endswith("|"):
+            table_lines = []
+            while i < len(lines) and lines[i].strip().startswith("|"):
+                table_lines.append(lines[i].strip())
+                i += 1
+            add_table_from_md(table_lines)
+            doc.add_paragraph()
+            continue
+
+        # Horizontal rule
+        if re.match(r"^[-*_]{3,}$", stripped):
+            para = doc.add_paragraph()
+            pPr = para._p.get_or_add_pPr()
+            pBdr = OxmlElement("w:pBdr")
+            bottom = OxmlElement("w:bottom")
+            bottom.set(qn("w:val"), "single")
+            bottom.set(qn("w:sz"), "6")
+            bottom.set(qn("w:space"), "1")
+            bottom.set(qn("w:color"), "C9A84C")
+            pBdr.append(bottom)
+            pPr.append(pBdr)
+            i += 1
+            continue
+
+        # H1
+        if stripped.startswith("# ") and not stripped.startswith("##"):
+            para = doc.add_heading(level=1)
+            para.clear()
+            run = para.add_run(stripped[2:])
+            run.font.name = "Calibri"
+            run.font.size = Pt(18)
+            run.font.color.rgb = NAVY
+            run.bold = True
+            para.paragraph_format.space_before = Pt(0)
+            para.paragraph_format.space_after  = Pt(8)
+            i += 1
+            continue
+
+        # H2
+        if stripped.startswith("## "):
+            para = doc.add_heading(level=2)
+            para.clear()
+            run = para.add_run(stripped[3:])
+            run.font.name = "Calibri"
+            run.font.size = Pt(13)
+            run.font.color.rgb = GOLD
+            run.bold = True
+            para.paragraph_format.space_before = Pt(14)
+            para.paragraph_format.space_after  = Pt(4)
+            i += 1
+            continue
+
+        # H3
+        if stripped.startswith("### "):
+            para = doc.add_heading(level=3)
+            para.clear()
+            run = para.add_run(stripped[4:])
+            run.font.name = "Calibri"
+            run.font.size = Pt(11)
+            run.font.color.rgb = NAVY
+            run.bold = True
+            para.paragraph_format.space_before = Pt(10)
+            para.paragraph_format.space_after  = Pt(2)
+            i += 1
+            continue
+
+        # Blockquote
+        if stripped.startswith("> "):
+            para = doc.add_paragraph()
+            para.paragraph_format.left_indent = Inches(0.4)
+            run = para.add_run(stripped[2:])
+            run.font.color.rgb = SUBTLE
+            run.italic = True
+            para.paragraph_format.space_after = Pt(6)
+            i += 1
+            continue
+
+        # Bullet list (- or *)
+        if re.match(r"^[-*]\s+", stripped):
+            para = doc.add_paragraph(style="List Bullet")
+            add_inline_text(para, re.sub(r"^[-*]\s+", "", stripped))
+            para.paragraph_format.space_after = Pt(2)
+            i += 1
+            continue
+
+        # Numbered list
+        if re.match(r"^\d+\.\s+", stripped):
+            para = doc.add_paragraph(style="List Number")
+            add_inline_text(para, re.sub(r"^\d+\.\s+", "", stripped))
+            para.paragraph_format.space_after = Pt(2)
+            i += 1
+            continue
+
+        # Code block
+        if stripped.startswith("```"):
+            code_lines = []
+            i += 1
+            while i < len(lines) and not lines[i].strip().startswith("```"):
+                code_lines.append(lines[i])
+                i += 1
+            i += 1  # skip closing ```
+            para = doc.add_paragraph()
+            para.paragraph_format.left_indent = Inches(0.3)
+            para.paragraph_format.space_after = Pt(6)
+            run = para.add_run("\n".join(code_lines))
+            run.font.name = "Courier New"
+            run.font.size = Pt(9)
+            run.font.color.rgb = RGBColor(0x33, 0x33, 0x33)
+            continue
+
+        # Empty line
+        if not stripped:
+            i += 1
+            continue
+
+        # Normal paragraph
+        para = doc.add_paragraph()
+        add_inline_text(para, stripped)
+        para.paragraph_format.space_after = Pt(5)
+        i += 1
+
+    buf = io.BytesIO()
+    doc.save(buf)
+    return buf.getvalue()
+
+
+# ---------------------------------------------------------------------------
 # Header
 # ---------------------------------------------------------------------------
 st.markdown("""
 <div class="pe-header">
-  <h1>PE Ops Due Diligence Brief Generator</h1>
-  <p>Middle market buyout targets · $50M–$500M EV · Operational intelligence in minutes</p>
+  <h1>PE Ops Tool Suite</h1>
+  <p>Middle market buyout · Operational intelligence and value creation planning</p>
 </div>
 """, unsafe_allow_html=True)
 
 
 # ---------------------------------------------------------------------------
-# Layout: form left, output right
+# Utility: run async coroutine in a worker thread
 # ---------------------------------------------------------------------------
-col_form, col_out = st.columns([1, 1.6], gap="large")
-
-with col_form:
-    st.markdown('<div class="section-label">Target Details</div>', unsafe_allow_html=True)
-
-    company_name = st.text_input(
-        "Company name *",
-        placeholder="e.g. Acme Packaging",
-        key="company_name",
-    )
-
-    description = st.text_area(
-        "Company description *",
-        placeholder=(
-            "2–5 sentences on the business: what they do, who they serve, "
-            "revenue model, and any known ownership history."
-        ),
-        height=130,
-        key="description",
-    )
-
-    industry = st.text_input(
-        "Industry vertical *",
-        placeholder="e.g. Industrial Packaging, Healthcare Services, Business Services",
-        key="industry",
-    )
-
-    ev_range = st.selectbox(
-        "EV range *",
-        options=["$50–100M", "$100–250M", "$250–500M"],
-        index=1,
-        key="ev_range",
-    )
-
-    context_notes = st.text_area(
-        "Context notes (optional)",
-        placeholder=(
-            "Deal-specific context: ownership history, known ops issues, "
-            "thesis hooks, key-man concerns, customer concentration flags…"
-        ),
-        height=100,
-        key="context_notes",
-    )
-
-    st.markdown("<br>", unsafe_allow_html=True)
-
-    generate_clicked = st.button(
-        "Generate Brief",
-        type="primary",
-        use_container_width=True,
-        disabled=st.session_state.get("generating", False),
-    )
-
-
-# ---------------------------------------------------------------------------
-# Generation logic
-# ---------------------------------------------------------------------------
-
 def run_async_in_thread(coro, result_queue: queue.Queue):
-    """Run an async coroutine in a dedicated event loop on a worker thread."""
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     try:
@@ -260,138 +502,72 @@ def run_async_in_thread(coro, result_queue: queue.Queue):
         loop.close()
 
 
-with col_out:
-    # ── Validation & trigger ──────────────────────────────────────────────
-    if generate_clicked:
-        missing = []
-        if not company_name.strip():
-            missing.append("Company name")
-        if not description.strip():
-            missing.append("Company description")
-        if not industry.strip():
-            missing.append("Industry vertical")
+# ---------------------------------------------------------------------------
+# Shared: output display block (used by both tabs)
+# ---------------------------------------------------------------------------
+def render_output_block(result_key: str, inputs_key: str, error_key: str,
+                        generating_key: str, label: str, file_suffix: str):
+    """Render the result/error/empty state for a generation module."""
 
-        if missing:
-            st.error(f"Please fill in: {', '.join(missing)}")
-        else:
-            st.session_state["generating"] = True
-            st.session_state["brief_result"] = None
-            st.session_state["brief_error"] = None
-            st.session_state["brief_inputs"] = {
-                "company_name": company_name.strip(),
-                "description": description.strip(),
-                "industry": industry.strip(),
-                "ev_range": ev_range,
-                "context_notes": context_notes.strip(),
-            }
+    if st.session_state.get(error_key):
+        st.error(f"**Error:** {st.session_state[error_key]}")
+        if st.button("Try again", key=f"{result_key}_retry"):
+            st.session_state[error_key] = None
             st.rerun()
 
-    # ── Active generation ─────────────────────────────────────────────────
-    if st.session_state.get("generating") and not st.session_state.get("brief_result"):
-        inputs = st.session_state["brief_inputs"]
-
-        from generate_brief import generate_brief  # noqa: E402
-
-        steps = [
-            "Web research and data pulls (SEC EDGAR, BLS, news)…",
-            "Generating executive summary…",
-            "Assessing operational risk flags…",
-            "Building comps and benchmarks…",
-            "Evaluating IT systems maturity…",
-            "Mapping value creation levers…",
-            "Drafting 100-day plan…",
-            "Compiling diligence questions…",
-            "Assembling final brief…",
-        ]
-
-        with st.status("Generating brief — this takes 1–2 minutes…", expanded=True) as status_box:
-            for s in steps:
-                status_box.write(f"⏳ {s}")
-
-            result_q: queue.Queue = queue.Queue()
-            t = threading.Thread(
-                target=run_async_in_thread,
-                args=(
-                    generate_brief(
-                        company_name=inputs["company_name"],
-                        description=inputs["description"],
-                        industry=inputs["industry"],
-                        ev_range=inputs["ev_range"],
-                        context_notes=inputs["context_notes"],
-                    ),
-                    result_q,
-                ),
-                daemon=True,
-            )
-            t.start()
-            t.join()  # block until complete (Streamlit rerun will pick up state)
-
-            kind, payload = result_q.get_nowait()
-
-            if kind == "ok":
-                output_path = payload
-                brief_text = Path(output_path).read_text(encoding="utf-8")
-                st.session_state["brief_result"] = brief_text
-                st.session_state["brief_path"] = output_path
-                st.session_state["generating"] = False
-                status_box.update(label="Brief ready.", state="complete", expanded=False)
-                st.rerun()
-            else:
-                st.session_state["brief_error"] = str(payload)
-                st.session_state["generating"] = False
-                status_box.update(label="Generation failed.", state="error", expanded=False)
-                st.rerun()
-
-    # ── Error state ───────────────────────────────────────────────────────
-    if st.session_state.get("brief_error"):
-        st.error(f"**Error:** {st.session_state['brief_error']}")
-        if st.button("Try again"):
-            st.session_state["brief_error"] = None
-            st.rerun()
-
-    # ── Brief display ─────────────────────────────────────────────────────
-    if st.session_state.get("brief_result"):
-        brief_text = st.session_state["brief_result"]
-        inputs = st.session_state.get("brief_inputs", {})
+    elif st.session_state.get(result_key):
+        output_text = st.session_state[result_key]
+        inputs = st.session_state.get(inputs_key, {})
         company = inputs.get("company_name", "Company")
         today = datetime.today().strftime("%Y-%m-%d")
-        filename = f"{company.lower().replace(' ', '_')}_ops_brief_{today}.md"
+        slug = company.lower().replace(" ", "_")
+        md_filename   = f"{slug}_{file_suffix}_{today}.md"
+        docx_filename = f"{slug}_{file_suffix}_{today}.docx"
 
-        # Action row: metadata + download
-        meta_col, dl_col = st.columns([2, 1])
+        meta_col, dl_md_col, dl_docx_col = st.columns([2, 1, 1])
         with meta_col:
             st.markdown(
                 f'<p style="color:#8b8fa8;font-size:0.82rem;margin:0;">'
                 f'<strong style="color:#c9a84c;">{company}</strong> · '
-                f'{inputs.get("industry","")} · {inputs.get("ev_range","")} · {today}'
+                f'{inputs.get("industry", "")} · {today}'
                 f'</p>',
                 unsafe_allow_html=True,
             )
-        with dl_col:
+        with dl_md_col:
             st.download_button(
                 label="Download Markdown",
-                data=brief_text.encode("utf-8"),
-                file_name=filename,
+                data=output_text.encode("utf-8"),
+                file_name=md_filename,
                 mime="text/markdown",
                 use_container_width=True,
+                key=f"{result_key}_dl_md",
+            )
+        with dl_docx_col:
+            docx_bytes = markdown_to_docx(output_text, company)
+            st.download_button(
+                label="Download as Word",
+                data=docx_bytes,
+                file_name=docx_filename,
+                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                use_container_width=True,
+                key=f"{result_key}_dl_docx",
             )
 
         st.markdown("<br>", unsafe_allow_html=True)
-
-        # Render the brief
         st.markdown('<div class="brief-wrapper">', unsafe_allow_html=True)
-        st.markdown(brief_text, unsafe_allow_html=False)
+        st.markdown(output_text, unsafe_allow_html=False)
         st.markdown('</div>', unsafe_allow_html=True)
 
         st.markdown("<br>", unsafe_allow_html=True)
-        if st.button("Generate another brief", use_container_width=False):
-            for key in ["brief_result", "brief_error", "brief_path", "brief_inputs", "generating"]:
+        if st.button(f"Generate another {label}", use_container_width=False, key=f"{result_key}_reset"):
+            for key in [result_key, error_key, f"{result_key}_path", inputs_key, generating_key]:
                 st.session_state.pop(key, None)
             st.rerun()
 
-    # ── Empty state ───────────────────────────────────────────────────────
-    elif not st.session_state.get("generating") and not st.session_state.get("brief_error"):
-        st.markdown("""
+    elif not st.session_state.get(generating_key) and not st.session_state.get(error_key):
+        icon = "📋" if label == "brief" else "📊"
+        action = "Generate Brief" if label == "brief" else "Generate VCP"
+        st.markdown(f"""
 <div style="
   height: 420px;
   display: flex;
@@ -404,13 +580,426 @@ with col_out:
   text-align: center;
   padding: 2rem;
 ">
-  <div style="font-size: 2.5rem; margin-bottom: 1rem; opacity: 0.5;">📋</div>
+  <div style="font-size: 2.5rem; margin-bottom: 1rem; opacity: 0.5;">{icon}</div>
   <div style="font-size: 0.92rem; font-weight: 600; color: #4a5070; margin-bottom: 0.4rem;">
-    Brief output will appear here
+    Output will appear here
   </div>
-  <div style="font-size: 0.8rem; color: #363b54; max-width: 320px; line-height: 1.6;">
-    Fill in the target details on the left and click <strong style="color:#4a5070;">Generate Brief</strong>.
-    Generation typically takes 1–2 minutes.
+  <div style="font-size: 0.8rem; color: #363b54; max-width: 340px; line-height: 1.6;">
+    Fill in the details on the left and click
+    <strong style="color:#4a5070;">{action}</strong>.
   </div>
 </div>
 """, unsafe_allow_html=True)
+
+
+# ===========================================================================
+# TAB LAYOUT
+# ===========================================================================
+tab1, tab2 = st.tabs(["Deal Diligence Brief", "Value Creation Planner"])
+
+
+# ===========================================================================
+# TAB 1 — Deal Diligence Brief
+# ===========================================================================
+with tab1:
+    col_form, col_out = st.columns([1, 1.6], gap="large")
+
+    with col_form:
+        st.markdown('<div class="section-label">Target Details</div>', unsafe_allow_html=True)
+
+        b_company = st.text_input(
+            "Company name *",
+            placeholder="e.g. Acme Packaging",
+            key="b_company_name",
+        )
+        b_description = st.text_area(
+            "Company description *",
+            placeholder=(
+                "2–5 sentences on the business: what they do, who they serve, "
+                "revenue model, and any known ownership history."
+            ),
+            height=130,
+            key="b_description",
+        )
+        b_industry = st.text_input(
+            "Industry vertical *",
+            placeholder="e.g. Industrial Packaging, Healthcare Services, Business Services",
+            key="b_industry",
+        )
+        b_ev_range = st.selectbox(
+            "EV range *",
+            options=["$50–100M", "$100–250M", "$250–500M"],
+            index=1,
+            key="b_ev_range",
+        )
+        b_notes = st.text_area(
+            "Context notes (optional)",
+            placeholder=(
+                "Deal-specific context: ownership history, known ops issues, "
+                "thesis hooks, key-man concerns, customer concentration flags…"
+            ),
+            height=100,
+            key="b_context_notes",
+        )
+
+        # ── Module selector ──────────────────────────────────────────────────
+        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown('<div class="section-label">Sections to Generate</div>', unsafe_allow_html=True)
+
+        MODULE_OPTIONS = [
+            ("exec_summary",        "Executive Summary"),
+            ("risk_flags",          "Operational Risk Flags"),
+            ("it_systems",          "IT & Systems Maturity"),
+            ("comps_benchmarks",    "Comparable Companies & Benchmarks"),
+            ("value_creation",      "Value Creation Opportunities"),
+            ("100_day_plan",        "100-Day Plan"),
+            ("diligence_questions", "Diligence Questions"),
+        ]
+
+        selected_modules = []
+        cb_cols = st.columns(2)
+        for idx, (key, label_text) in enumerate(MODULE_OPTIONS):
+            col = cb_cols[idx % 2]
+            checked = col.checkbox(label_text, value=True, key=f"b_mod_{key}")
+            if checked:
+                selected_modules.append(key)
+
+        # ── Document upload ──────────────────────────────────────────────────
+        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown('<div class="section-label">Style Reference (optional)</div>', unsafe_allow_html=True)
+        b_upload = st.file_uploader(
+            "Upload a .docx or .pdf to mirror its structure and tone",
+            type=["docx", "pdf"],
+            key="b_upload",
+            label_visibility="collapsed",
+        )
+        if b_upload:
+            st.caption(f"Uploaded: {b_upload.name}")
+
+        st.markdown("<br>", unsafe_allow_html=True)
+        b_generate = st.button(
+            "Generate Brief",
+            type="primary",
+            use_container_width=True,
+            disabled=st.session_state.get("b_generating", False),
+            key="b_generate_btn",
+        )
+
+    with col_out:
+        # Validation & trigger
+        if b_generate:
+            missing = []
+            if not b_company.strip():
+                missing.append("Company name")
+            if not b_description.strip():
+                missing.append("Company description")
+            if not b_industry.strip():
+                missing.append("Industry vertical")
+            if not selected_modules:
+                missing.append("at least one section")
+
+            if missing:
+                st.error(f"Please fill in / select: {', '.join(missing)}")
+            else:
+                style_ref = extract_text_from_upload(b_upload) if b_upload else ""
+                st.session_state["b_generating"] = True
+                st.session_state["b_result"] = None
+                st.session_state["b_error"] = None
+                st.session_state["b_inputs"] = {
+                    "company_name": b_company.strip(),
+                    "description": b_description.strip(),
+                    "industry": b_industry.strip(),
+                    "ev_range": b_ev_range,
+                    "context_notes": b_notes.strip(),
+                    "modules": selected_modules,
+                    "style_reference": style_ref,
+                }
+                st.rerun()
+
+        # Active generation
+        if st.session_state.get("b_generating") and not st.session_state.get("b_result"):
+            inputs = st.session_state["b_inputs"]
+            from generate_brief import generate_brief  # noqa: E402
+
+            steps = [
+                "Web research and data pulls (SEC EDGAR, BLS, news)…",
+                "Generating executive summary…",
+                "Assessing operational risk flags…",
+                "Building comps and benchmarks…",
+                "Evaluating IT systems maturity…",
+                "Mapping value creation levers…",
+                "Drafting 100-day plan…",
+                "Compiling diligence questions…",
+                "Assembling final brief…",
+            ]
+
+            with st.status("Generating brief — this takes 1–2 minutes…", expanded=True) as status_box:
+                for s in steps:
+                    status_box.write(f"⏳ {s}")
+
+                result_q: queue.Queue = queue.Queue()
+                t = threading.Thread(
+                    target=run_async_in_thread,
+                    args=(
+                        generate_brief(
+                            company_name=inputs["company_name"],
+                            description=inputs["description"],
+                            industry=inputs["industry"],
+                            ev_range=inputs["ev_range"],
+                            context_notes=inputs["context_notes"],
+                            modules=inputs.get("modules"),
+                            style_reference=inputs.get("style_reference", ""),
+                        ),
+                        result_q,
+                    ),
+                    daemon=True,
+                )
+                t.start()
+                t.join()
+
+                kind, payload = result_q.get_nowait()
+
+                if kind == "ok":
+                    brief_text = Path(payload).read_text(encoding="utf-8")
+                    st.session_state["b_result"] = brief_text
+                    st.session_state["b_result_path"] = payload
+                    st.session_state["b_generating"] = False
+                    status_box.update(label="Brief ready.", state="complete", expanded=False)
+                    st.rerun()
+                else:
+                    st.session_state["b_error"] = str(payload)
+                    st.session_state["b_generating"] = False
+                    status_box.update(label="Generation failed.", state="error", expanded=False)
+                    st.rerun()
+
+        render_output_block(
+            result_key="b_result",
+            inputs_key="b_inputs",
+            error_key="b_error",
+            generating_key="b_generating",
+            label="brief",
+            file_suffix="ops_brief",
+        )
+
+
+# ===========================================================================
+# TAB 2 — Value Creation Planner
+# ===========================================================================
+with tab2:
+    col_vcp_form, col_vcp_out = st.columns([1, 1.6], gap="large")
+
+    with col_vcp_form:
+        st.markdown('<div class="section-label">Company & Deal Inputs</div>', unsafe_allow_html=True)
+
+        v_company = st.text_input(
+            "Company name *",
+            placeholder="e.g. Acme Packaging",
+            key="v_company_name",
+        )
+        v_description = st.text_area(
+            "Company description *",
+            placeholder="What the business does, who it serves, revenue model.",
+            height=100,
+            key="v_description",
+        )
+        v_industry = st.text_input(
+            "Industry vertical *",
+            placeholder="e.g. Industrial Packaging, Healthcare Services",
+            key="v_industry",
+        )
+
+        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown('<div class="section-label">Financials</div>', unsafe_allow_html=True)
+
+        fin_col1, fin_col2 = st.columns(2)
+        with fin_col1:
+            v_revenue = st.number_input(
+                "Current Revenue ($M) *",
+                min_value=0.0,
+                value=None,
+                placeholder="e.g. 85.0",
+                step=1.0,
+                format="%.1f",
+                key="v_revenue",
+            )
+        with fin_col2:
+            v_ebitda = st.number_input(
+                "Current EBITDA ($M) *",
+                min_value=0.0,
+                value=None,
+                placeholder="e.g. 14.0",
+                step=0.5,
+                format="%.1f",
+                key="v_ebitda",
+            )
+
+        hold_col, target_col = st.columns(2)
+        with hold_col:
+            v_hold = st.selectbox(
+                "Target hold period *",
+                options=[3, 4, 5],
+                index=2,
+                key="v_hold_period",
+            )
+        with target_col:
+            v_target_ebitda = st.number_input(
+                "Target EBITDA at exit ($M) *",
+                min_value=0.0,
+                value=None,
+                placeholder="e.g. 28.0",
+                step=0.5,
+                format="%.1f",
+                key="v_target_ebitda",
+            )
+
+        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown('<div class="section-label">Thesis & Context</div>', unsafe_allow_html=True)
+
+        v_thesis = st.text_area(
+            "PE sponsor's investment thesis *",
+            placeholder=(
+                "What's the core value creation hypothesis? "
+                "e.g. Fragmented market with pricing power, undermanaged working capital, "
+                "greenfield expansion opportunity into adjacent geographies."
+            ),
+            height=110,
+            key="v_thesis",
+        )
+        v_challenges = st.text_area(
+            "Known operational challenges",
+            placeholder=(
+                "Issues surfaced in diligence or known pre-close: "
+                "e.g. No CFO in seat, ERP is 15 years old, top customer is 38% of revenue, "
+                "margins compressed 4pp over 3 years."
+            ),
+            height=110,
+            key="v_challenges",
+        )
+
+        # ── Document upload ──────────────────────────────────────────────────
+        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown('<div class="section-label">Style Reference (optional)</div>', unsafe_allow_html=True)
+        v_upload = st.file_uploader(
+            "Upload a .docx or .pdf to mirror its structure and tone",
+            type=["docx", "pdf"],
+            key="v_upload",
+            label_visibility="collapsed",
+        )
+        if v_upload:
+            st.caption(f"Uploaded: {v_upload.name}")
+
+        st.markdown("<br>", unsafe_allow_html=True)
+        v_generate = st.button(
+            "Generate VCP",
+            type="primary",
+            use_container_width=True,
+            disabled=st.session_state.get("v_generating", False),
+            key="v_generate_btn",
+        )
+
+    with col_vcp_out:
+        # Validation & trigger
+        if v_generate:
+            missing = []
+            if not v_company.strip():
+                missing.append("Company name")
+            if not v_description.strip():
+                missing.append("Company description")
+            if not v_industry.strip():
+                missing.append("Industry vertical")
+            if v_revenue is None or v_revenue <= 0:
+                missing.append("Current Revenue")
+            if v_ebitda is None or v_ebitda <= 0:
+                missing.append("Current EBITDA")
+            if v_target_ebitda is None or v_target_ebitda <= 0:
+                missing.append("Target EBITDA at exit")
+            if not v_thesis.strip():
+                missing.append("Investment thesis")
+
+            if missing:
+                st.error(f"Please fill in: {', '.join(missing)}")
+            else:
+                style_ref = extract_text_from_upload(v_upload) if v_upload else ""
+                st.session_state["v_generating"] = True
+                st.session_state["v_result"] = None
+                st.session_state["v_error"] = None
+                st.session_state["v_inputs"] = {
+                    "company_name": v_company.strip(),
+                    "description": v_description.strip(),
+                    "industry": v_industry.strip(),
+                    "current_revenue": float(v_revenue),
+                    "current_ebitda": float(v_ebitda),
+                    "investment_thesis": v_thesis.strip(),
+                    "operational_challenges": v_challenges.strip() or "None specified.",
+                    "hold_period": int(v_hold),
+                    "target_ebitda": float(v_target_ebitda),
+                    "style_reference": style_ref,
+                }
+                st.rerun()
+
+        # Active VCP generation
+        if st.session_state.get("v_generating") and not st.session_state.get("v_result"):
+            inputs = st.session_state["v_inputs"]
+            from generate_vcp import generate_vcp  # noqa: E402
+
+            ebitda_uplift = inputs["target_ebitda"] - inputs["current_ebitda"]
+            steps = [
+                f"Modeling EBITDA bridge: +${ebitda_uplift:.1f}M over {inputs['hold_period']} years…",
+                "Building top 5 value creation workstreams…",
+                "Generating quick win tracker (90-day initiatives)…",
+                "Designing KPI dashboard…",
+                "Writing 100-day sprint plan…",
+                "Identifying organizational capability gaps…",
+                "Assembling final VCP…",
+            ]
+
+            with st.status("Generating VCP — typically 30–60 seconds…", expanded=True) as status_box:
+                for s in steps:
+                    status_box.write(f"⏳ {s}")
+
+                result_q: queue.Queue = queue.Queue()
+                t = threading.Thread(
+                    target=run_async_in_thread,
+                    args=(
+                        generate_vcp(
+                            company_name=inputs["company_name"],
+                            description=inputs["description"],
+                            industry=inputs["industry"],
+                            current_revenue=inputs["current_revenue"],
+                            current_ebitda=inputs["current_ebitda"],
+                            investment_thesis=inputs["investment_thesis"],
+                            operational_challenges=inputs["operational_challenges"],
+                            hold_period=inputs["hold_period"],
+                            target_ebitda=inputs["target_ebitda"],
+                            style_reference=inputs.get("style_reference", ""),
+                        ),
+                        result_q,
+                    ),
+                    daemon=True,
+                )
+                t.start()
+                t.join()
+
+                kind, payload = result_q.get_nowait()
+
+                if kind == "ok":
+                    vcp_text = Path(payload).read_text(encoding="utf-8")
+                    st.session_state["v_result"] = vcp_text
+                    st.session_state["v_result_path"] = payload
+                    st.session_state["v_generating"] = False
+                    status_box.update(label="VCP ready.", state="complete", expanded=False)
+                    st.rerun()
+                else:
+                    st.session_state["v_error"] = str(payload)
+                    st.session_state["v_generating"] = False
+                    status_box.update(label="Generation failed.", state="error", expanded=False)
+                    st.rerun()
+
+        render_output_block(
+            result_key="v_result",
+            inputs_key="v_inputs",
+            error_key="v_error",
+            generating_key="v_generating",
+            label="VCP",
+            file_suffix="vcp",
+        )

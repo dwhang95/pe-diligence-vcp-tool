@@ -200,13 +200,42 @@ async def generate_section(
 # Main orchestrator
 # ---------------------------------------------------------------------------
 
+ALL_MODULES = [
+    "exec_summary",
+    "risk_flags",
+    "comps_benchmarks",
+    "it_systems",
+    "value_creation",
+    "100_day_plan",
+    "diligence_questions",
+]
+
+SECTION_HEADERS = {
+    "exec_summary":        "## 1. Executive Summary",
+    "risk_flags":          "## 2. Operational Risk Flags",
+    "comps_benchmarks":    "## 3. Comparable Companies & Benchmarks",
+    "it_systems":          "## 4. IT & Systems Maturity",
+    "value_creation":      "## 5. Value Creation Opportunities",
+    "100_day_plan":        "## 6. 100-Day Plan Outline Starter",
+    "diligence_questions": "## 7. Key Diligence Questions",
+}
+
+
 async def generate_brief(
     company_name: str,
     description: str,
     industry: str,
     ev_range: str = "$50M–$500M",
     context_notes: str = "",
+    modules: list[str] | None = None,
+    style_reference: str = "",
 ) -> str:
+    """
+    modules: list of section keys to generate (default: all).
+    style_reference: extracted text from an uploaded document to mirror.
+    """
+    if modules is None:
+        modules = ALL_MODULES
 
     api_key = os.environ.get("ANTHROPIC_API_KEY")
     if not api_key:
@@ -220,7 +249,18 @@ async def generate_brief(
     print("\n[Phase 1] Web research, data pulls, and template loading in parallel...")
 
     async def load_static_templates() -> tuple[str, str]:
-        system_prompt = load_template("system_prompt")
+        base_system = load_template("system_prompt")
+        if style_reference.strip():
+            style_addendum = (
+                "\n\n---\n\n"
+                "**STYLE REFERENCE DOCUMENT (uploaded by user)**\n"
+                "Mirror the structure, tone, and formatting style of this document "
+                "when generating each section. Adapt content but match the voice and layout:\n\n"
+                f"{style_reference[:6000]}"  # cap at ~6k chars to stay within token budget
+            )
+            system_prompt = base_system + style_addendum
+        else:
+            system_prompt = base_system
         brief_template = (TEMPLATES_DIR / "brief_template.md").read_text()
         return system_prompt, brief_template
 
@@ -297,17 +337,23 @@ async def generate_brief(
         "news_summary_markdown": news_summary_markdown,
     }
 
+    async def gen(section_key: str, ctx: dict) -> str:
+        if section_key not in modules:
+            print(f"  [generate] Skipping (disabled): {section_key}")
+            return "_Section excluded from this brief._"
+        return await generate_section(client, system_prompt, section_key, ctx)
+
     # -----------------------------------------------------------------------
     # Phase 2: Sections generated sequentially with auto-retry on rate limits.
     # Parallel generation hits the 30k token/min limit too easily; sequential
     # with backoff is more reliable across different API tier sizes.
     # -----------------------------------------------------------------------
     print("\n[Phase 2] Generating sections 1–5 sequentially...")
-    exec_summary   = await generate_section(client, system_prompt, "exec_summary",    base_context)
-    risk_flags     = await generate_section(client, system_prompt, "risk_flags",      base_context)
-    comps_benchmarks = await generate_section(client, system_prompt, "comps_benchmarks", base_context)
-    it_systems     = await generate_section(client, system_prompt, "it_systems",      base_context)
-    value_creation = await generate_section(client, system_prompt, "value_creation",  base_context)
+    exec_summary     = await gen("exec_summary",     base_context)
+    risk_flags       = await gen("risk_flags",       base_context)
+    comps_benchmarks = await gen("comps_benchmarks", base_context)
+    it_systems       = await gen("it_systems",       base_context)
+    value_creation   = await gen("value_creation",   base_context)
 
     # -----------------------------------------------------------------------
     # Phase 3: Sections 6–7 sequentially (depend on risk_flags + value_creation)
@@ -320,8 +366,8 @@ async def generate_brief(
         "vc_levers_summary": value_creation,
     }
 
-    day_plan          = await generate_section(client, system_prompt, "100_day_plan",        extended_context)
-    diligence_questions = await generate_section(client, system_prompt, "diligence_questions", extended_context)
+    day_plan            = await gen("100_day_plan",        extended_context)
+    diligence_questions = await gen("diligence_questions", extended_context)
 
     # -----------------------------------------------------------------------
     # Phase 4: Assemble and write output
