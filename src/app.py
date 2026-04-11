@@ -506,8 +506,13 @@ def run_async_in_thread(coro, result_queue: queue.Queue):
 # Shared: output display block (used by both tabs)
 # ---------------------------------------------------------------------------
 def render_output_block(result_key: str, inputs_key: str, error_key: str,
-                        generating_key: str, label: str, file_suffix: str):
-    """Render the result/error/empty state for a generation module."""
+                        generating_key: str, label: str, file_suffix: str,
+                        include_lbo: bool = False):
+    """Render the result/error/empty state for a generation module.
+
+    include_lbo: when True and a result exists, generate and surface an LBO
+                 model Excel download alongside the standard Markdown / Word buttons.
+    """
 
     if st.session_state.get(error_key):
         st.error(f"**Error:** {st.session_state[error_key]}")
@@ -524,7 +529,24 @@ def render_output_block(result_key: str, inputs_key: str, error_key: str,
         md_filename   = f"{slug}_{file_suffix}_{today}.md"
         docx_filename = f"{slug}_{file_suffix}_{today}.docx"
 
-        meta_col, dl_md_col, dl_docx_col = st.columns([2, 1, 1])
+        # Optionally generate LBO Excel bytes (fast — no API call)
+        lbo_bytes = None
+        if include_lbo:
+            try:
+                from lbo_model import build_lbo_excel  # noqa: E402
+                lbo_bytes = build_lbo_excel(
+                    company_name=company,
+                    industry=inputs.get("industry", ""),
+                    ev_range=inputs.get("ev_range", "$100–250M"),
+                )
+            except Exception as exc:
+                st.warning(f"LBO model could not be generated: {exc}")
+
+        if lbo_bytes:
+            meta_col, dl_md_col, dl_docx_col, dl_lbo_col = st.columns([2, 1, 1, 1])
+        else:
+            meta_col, dl_md_col, dl_docx_col = st.columns([2, 1, 1])
+
         with meta_col:
             st.markdown(
                 f'<p style="color:#8b8fa8;font-size:0.82rem;margin:0;">'
@@ -552,6 +574,16 @@ def render_output_block(result_key: str, inputs_key: str, error_key: str,
                 use_container_width=True,
                 key=f"{result_key}_dl_docx",
             )
+        if lbo_bytes:
+            with dl_lbo_col:
+                st.download_button(
+                    label="Download LBO Model",
+                    data=lbo_bytes,
+                    file_name=f"{slug}_lbo_model_{today}.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    use_container_width=True,
+                    key=f"{result_key}_dl_lbo",
+                )
 
         st.markdown("<br>", unsafe_allow_html=True)
         st.markdown('<div class="brief-wrapper">', unsafe_allow_html=True)
@@ -664,6 +696,23 @@ with tab1:
             if checked:
                 selected_modules.append(key)
 
+        # ── Add-ons ──────────────────────────────────────────────────────────
+        st.markdown(
+            '<div style="border-top:1px solid #2a2d35;margin:0.75rem 0 0.5rem 0;"></div>',
+            unsafe_allow_html=True,
+        )
+        st.markdown('<div class="section-label">Add-Ons</div>', unsafe_allow_html=True)
+        b_include_lbo = st.checkbox(
+            "LBO Model Starter (Excel)",
+            value=False,
+            key="b_mod_lbo_model",
+            help=(
+                "Generates a pre-populated 4-sheet Excel workbook "
+                "(Assumptions, Income Statement, Debt Schedule, Returns Summary) "
+                "seeded from the brief inputs. All assumptions are placeholders."
+            ),
+        )
+
         # ── Document upload ──────────────────────────────────────────────────
         st.markdown("<br>", unsafe_allow_html=True)
         st.markdown('<div class="section-label">Style Reference (optional)</div>', unsafe_allow_html=True)
@@ -713,6 +762,7 @@ with tab1:
                     "context_notes": b_notes.strip(),
                     "modules": selected_modules,
                     "style_reference": style_ref,
+                    "include_lbo": b_include_lbo,
                 }
                 st.rerun()
 
@@ -779,6 +829,7 @@ with tab1:
             generating_key="b_generating",
             label="brief",
             file_suffix="ops_brief",
+            include_lbo=st.session_state.get("b_inputs", {}).get("include_lbo", False),
         )
 
 
