@@ -38,15 +38,124 @@ st.set_page_config(
 )
 
 # ---------------------------------------------------------------------------
-# Dark theme CSS
+# Theme system — dark (default) and light
+# Uses __VARNAME__ placeholders so CSS braces don't need escaping.
 # ---------------------------------------------------------------------------
-st.markdown("""
+
+_DARK = dict(
+    BG_MAIN         = "#0e1117",
+    BG_SIDEBAR      = "#0b0e16",
+    BG_PANEL        = "#161b27",
+    BG_INPUT        = "#1c2030",
+    BG_TABLE_HDR    = "#1f2535",
+    BG_BTN_SEC      = "#1c2030",
+    BG_EXPANDER     = "#161b27",
+    BG_ERROR        = "#1e1424",
+    BORDER          = "#2a2d35",
+    BORDER_INPUT    = "#2f3347",
+    BORDER_ROW      = "#242836",
+    TEXT_MAIN       = "#e8e8e8",
+    TEXT_BODY       = "#c5c9dc",
+    TEXT_LABEL      = "#b0b5c9",
+    TEXT_MUTED      = "#8b8fa8",
+    TEXT_HEADING    = "#f0f0f0",
+    TEXT_H3         = "#d4d8ea",
+    TEXT_CODE       = "#b8c0d8",
+    TEXT_BQ         = "#8b8fa8",
+    ACCENT          = "#c9a84c",
+    ACCENT_HOVER    = "#e0be6a",
+    ACCENT_FOCUS    = "rgba(201,168,76,0.18)",
+    ACCENT_BG_HOVER = "rgba(201,168,76,0.1)",
+    BTN_TEXT        = "#0e1117",
+    TAB_INACTIVE    = "#6b7090",
+    ERR_BG          = "#1e1424",
+    ERR_BORDER      = "#5c2d3f",
+    ERR_TEXT        = "#f0a0a8",
+    LOCK_COLOR      = "#5a5e75",
+    TIER_STD_BG     = "#1f2535",
+    TIER_STD_TEXT   = "#8b8fa8",
+    TIER_STD_BORDER = "#2f3347",
+    TIER_PREM_BG    = "rgba(201,168,76,0.12)",
+    TIER_PREM_TEXT  = "#c9a84c",
+    TIER_PREM_BORDER= "#c9a84c",
+    STATS_COLOR     = "#6b7090",
+    STATS_STRONG    = "#8b8fa8",
+    META_COLOR      = "#8b8fa8",
+    META_STRONG     = "#c9a84c",
+    EMPTY_BORDER    = "#2a2d35",
+    EMPTY_COLOR     = "#3d4259",
+    EMPTY_STRONG    = "#4a5070",
+    EMPTY_SUB       = "#363b54",
+    TOGGLE_BG       = "rgba(255,255,255,0.06)",
+    TOGGLE_LABEL    = "#8b8fa8",
+)
+
+_LIGHT = dict(
+    BG_MAIN         = "#ffffff",
+    BG_SIDEBAR      = "#f0f2f8",
+    BG_PANEL        = "#f5f5f5",
+    BG_INPUT        = "#ffffff",
+    BG_TABLE_HDR    = "#eaecf4",
+    BG_BTN_SEC      = "#eaecf4",
+    BG_EXPANDER     = "#f5f5f5",
+    BG_ERROR        = "#fff0f2",
+    BORDER          = "#dde1ef",
+    BORDER_INPUT    = "#c0c8e0",
+    BORDER_ROW      = "#e4e8f2",
+    TEXT_MAIN       = "#1a2744",
+    TEXT_BODY       = "#333333",
+    TEXT_LABEL      = "#1a2744",
+    TEXT_MUTED      = "#555e7a",
+    TEXT_HEADING    = "#1a2744",
+    TEXT_H3         = "#2a3a60",
+    TEXT_CODE       = "#2a3a60",
+    TEXT_BQ         = "#555e7a",
+    ACCENT          = "#1a2744",
+    ACCENT_HOVER    = "#2a3a6a",
+    ACCENT_FOCUS    = "rgba(26,39,68,0.18)",
+    ACCENT_BG_HOVER = "rgba(26,39,68,0.06)",
+    BTN_TEXT        = "#ffffff",
+    TAB_INACTIVE    = "#7a86a8",
+    ERR_BG          = "#fff0f2",
+    ERR_BORDER      = "#f5b8c0",
+    ERR_TEXT        = "#a01830",
+    LOCK_COLOR      = "#8a94b0",
+    TIER_STD_BG     = "#e8ecf8",
+    TIER_STD_TEXT   = "#4a5a80",
+    TIER_STD_BORDER = "#c0c8e0",
+    TIER_PREM_BG    = "rgba(201,168,76,0.12)",
+    TIER_PREM_TEXT  = "#7a5800",
+    TIER_PREM_BORDER= "#c9a84c",
+    STATS_COLOR     = "#7a86a8",
+    STATS_STRONG    = "#1a2744",
+    META_COLOR      = "#555e7a",
+    META_STRONG     = "#7a5800",
+    EMPTY_BORDER    = "#dde1ef",
+    EMPTY_COLOR     = "#8a94b0",
+    EMPTY_STRONG    = "#555e7a",
+    EMPTY_SUB       = "#9aa4c0",
+    TOGGLE_BG       = "rgba(26,39,68,0.05)",
+    TOGGLE_LABEL    = "#555e7a",
+)
+
+_CSS_TEMPLATE = """
 <style>
+  /* ── Font catch-all — Arial everywhere except code ── */
+  html, body, * {
+    font-family: Arial, sans-serif !important;
+  }
+  pre, code, kbd, samp, .stCodeBlock * {
+    font-family: 'Courier New', Courier, monospace !important;
+  }
+
   /* ── Global ── */
-  html, body, [data-testid="stApp"] {
-    background-color: #1a2744;
-    color: #e8f0ff;
-    font-family: Arial, sans-serif;
+  html, body,
+  [data-testid="stApp"],
+  [data-testid="stAppViewContainer"],
+  [data-testid="stMainBlockContainer"],
+  .main .block-container {
+    background-color: __BG_MAIN__ !important;
+    color: __TEXT_MAIN__;
   }
 
   /* ── Hide Streamlit chrome ── */
@@ -54,35 +163,32 @@ st.markdown("""
 
   /* ── Page header ── */
   .pe-header {
-    border-bottom: 1px solid #2e4168;
+    border-bottom: 1px solid __BORDER__;
     padding-bottom: 1.2rem;
     margin-bottom: 1.5rem;
   }
   .pe-header h1 {
     font-size: 1.65rem;
     font-weight: 700;
-    font-family: Arial, sans-serif;
-    color: #f0f4ff;
+    color: __TEXT_HEADING__;
     letter-spacing: -0.3px;
     margin: 0 0 0.25rem 0;
   }
   .pe-header p {
-    color: #8fa8cc;
+    color: __TEXT_MUTED__;
     font-size: 0.88rem;
-    font-family: Arial, sans-serif;
     margin: 0;
   }
 
   /* ── Tabs ── */
   [data-testid="stTabs"] [data-baseweb="tab-list"] {
     gap: 0;
-    border-bottom: 1px solid #2e4168;
+    border-bottom: 1px solid __BORDER__;
     margin-bottom: 1.5rem;
   }
   [data-testid="stTabs"] [data-baseweb="tab"] {
     background: transparent !important;
-    color: #7a8db0 !important;
-    font-family: Arial, sans-serif !important;
+    color: __TAB_INACTIVE__ !important;
     font-size: 0.85rem;
     font-weight: 600;
     padding: 0.6rem 1.4rem;
@@ -90,8 +196,8 @@ st.markdown("""
     border-radius: 0 !important;
   }
   [data-testid="stTabs"] [aria-selected="true"] {
-    color: #f0b429 !important;
-    border-bottom: 2px solid #f0b429 !important;
+    color: __ACCENT__ !important;
+    border-bottom: 2px solid __ACCENT__ !important;
     background: transparent !important;
   }
 
@@ -99,17 +205,17 @@ st.markdown("""
   .section-label {
     font-size: 0.7rem;
     font-weight: 700;
-    font-family: Arial, sans-serif;
     letter-spacing: 0.1em;
     text-transform: uppercase;
-    color: #f0b429;
-    margin-bottom: 0.5rem;
+    color: __ACCENT__;
+    margin-bottom: 0.4rem;
+    display: block;
   }
 
   /* ── Form card ── */
   .form-card {
-    background: #1e2d4a;
-    border: 1px solid #2e4168;
+    background: __BG_PANEL__;
+    border: 1px solid __BORDER__;
     border-radius: 8px;
     padding: 1.5rem 1.75rem;
     margin-bottom: 1.5rem;
@@ -121,33 +227,32 @@ st.markdown("""
   [data-testid="stSelectbox"] select,
   [data-testid="stNumberInput"] input,
   div[data-baseweb="select"] {
-    background-color: #21325a !important;
-    border: 1px solid #2e4168 !important;
+    background-color: __BG_INPUT__ !important;
+    border: 1px solid __BORDER_INPUT__ !important;
     border-radius: 5px !important;
-    color: #e8f0ff !important;
-    font-family: Arial, sans-serif !important;
+    color: __TEXT_MAIN__ !important;
   }
   [data-testid="stTextInput"] input:focus,
   [data-testid="stTextArea"] textarea:focus,
   [data-testid="stNumberInput"] input:focus {
-    border-color: #f0b429 !important;
-    box-shadow: 0 0 0 2px rgba(240,180,41,0.2) !important;
+    border-color: __ACCENT__ !important;
+    box-shadow: 0 0 0 2px __ACCENT_FOCUS__ !important;
   }
-  label, .stTextInput label, .stTextArea label, .stSelectbox label,
-  .stNumberInput label {
-    color: #b8c8e0 !important;
-    font-family: Arial, sans-serif !important;
+  label,
+  .stTextInput label, .stTextArea label,
+  .stSelectbox label, .stNumberInput label,
+  [data-testid="stWidgetLabel"] {
+    color: __TEXT_LABEL__ !important;
     font-size: 0.82rem !important;
     font-weight: 500 !important;
   }
 
-  /* ── Generate button ── */
+  /* ── Primary button ── */
   [data-testid="stButton"] > button[kind="primary"] {
-    background: #f0b429;
-    color: #1a2744;
+    background: __ACCENT__;
+    color: __BTN_TEXT__;
     border: none;
     border-radius: 5px;
-    font-family: Arial, sans-serif;
     font-weight: 700;
     font-size: 0.9rem;
     padding: 0.6rem 1.8rem;
@@ -155,159 +260,267 @@ st.markdown("""
     transition: background 0.15s;
   }
   [data-testid="stButton"] > button[kind="primary"]:hover {
-    background: #f5c84a;
+    background: __ACCENT_HOVER__;
   }
 
   /* ── Secondary / plain buttons ── */
   [data-testid="stButton"] > button:not([kind="primary"]) {
-    font-family: Arial, sans-serif !important;
-    color: #b8c8e0 !important;
-    background: #21325a !important;
-    border: 1px solid #2e4168 !important;
+    color: __TEXT_LABEL__ !important;
+    background: __BG_BTN_SEC__ !important;
+    border: 1px solid __BORDER_INPUT__ !important;
     border-radius: 5px !important;
   }
   [data-testid="stButton"] > button:not([kind="primary"]):hover {
-    border-color: #f0b429 !important;
-    color: #f0b429 !important;
+    border-color: __ACCENT__ !important;
+    color: __ACCENT__ !important;
   }
 
   /* ── Download button ── */
   [data-testid="stDownloadButton"] > button {
     background: transparent;
-    border: 1px solid #f0b429;
-    color: #f0b429;
+    border: 1px solid __ACCENT__;
+    color: __ACCENT__;
     border-radius: 5px;
-    font-family: Arial, sans-serif;
     font-weight: 600;
     font-size: 0.85rem;
     padding: 0.45rem 1.2rem;
   }
   [data-testid="stDownloadButton"] > button:hover {
-    background: rgba(240,180,41,0.12);
+    background: __ACCENT_BG_HOVER__;
   }
 
   /* ── Status / progress ── */
   [data-testid="stStatus"] {
-    background: #1e2d4a !important;
-    border: 1px solid #2e4168 !important;
+    background: __BG_PANEL__ !important;
+    border: 1px solid __BORDER__ !important;
     border-radius: 6px !important;
-    font-family: Arial, sans-serif !important;
   }
 
   /* ── Brief / VCP output area ── */
   .brief-wrapper {
-    background: #1e2d4a;
-    border: 1px solid #2e4168;
+    background: __BG_PANEL__;
+    border: 1px solid __BORDER__;
     border-radius: 8px;
     padding: 2rem 2.25rem;
-    font-family: Arial, sans-serif;
   }
-  .brief-wrapper h1 { color: #f0f4ff; font-family: Arial, sans-serif; font-size: 1.4rem; border-bottom: 1px solid #2e4168; padding-bottom: 0.5rem; }
-  .brief-wrapper h2 { color: #f0b429; font-family: Arial, sans-serif; font-size: 1.05rem; margin-top: 1.8rem; }
-  .brief-wrapper h3 { color: #dce6f4; font-family: Arial, sans-serif; font-size: 0.95rem; }
-  .brief-wrapper p  { color: #d0daf0; font-family: Arial, sans-serif; line-height: 1.7; }
-  .brief-wrapper li { color: #d0daf0; font-family: Arial, sans-serif; line-height: 1.6; }
-  .brief-wrapper table { border-collapse: collapse; width: 100%; font-family: Arial, sans-serif; }
-  .brief-wrapper th { background: #21325a; color: #f0b429; padding: 0.5rem 0.75rem; font-size: 0.8rem; text-align: left; }
-  .brief-wrapper td { padding: 0.45rem 0.75rem; border-bottom: 1px solid #263a5e; color: #d0daf0; font-size: 0.85rem; }
-  .brief-wrapper code { background: #21325a; border-radius: 3px; padding: 0.1em 0.35em; font-size: 0.85em; font-family: 'Courier New', monospace; }
-  .brief-wrapper blockquote { border-left: 3px solid #f0b429; margin: 0.75rem 0; padding-left: 1rem; color: #8fa8cc; }
-  .brief-wrapper pre { background: #21325a; border-radius: 5px; padding: 1rem; overflow-x: auto; }
-  .brief-wrapper pre code { background: transparent; padding: 0; font-size: 0.82rem; color: #b8c8e0; }
+  .brief-wrapper h1 {
+    color: __TEXT_HEADING__;
+    font-size: 1.4rem;
+    border-bottom: 1px solid __BORDER__;
+    padding-bottom: 0.5rem;
+  }
+  .brief-wrapper h2 { color: __ACCENT__; font-size: 1.05rem; margin-top: 1.8rem; }
+  .brief-wrapper h3 { color: __TEXT_H3__; font-size: 0.95rem; }
+  .brief-wrapper p  { color: __TEXT_BODY__; line-height: 1.7; }
+  .brief-wrapper li { color: __TEXT_BODY__; line-height: 1.6; }
+  .brief-wrapper table { border-collapse: collapse; width: 100%; }
+  .brief-wrapper th {
+    background: __BG_TABLE_HDR__;
+    color: __ACCENT__;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8rem;
+    text-align: left;
+  }
+  .brief-wrapper td {
+    padding: 0.45rem 0.75rem;
+    border-bottom: 1px solid __BORDER_ROW__;
+    color: __TEXT_BODY__;
+    font-size: 0.85rem;
+  }
+  .brief-wrapper code {
+    background: __BG_INPUT__;
+    border-radius: 3px;
+    padding: 0.1em 0.35em;
+    font-size: 0.85em;
+    font-family: 'Courier New', monospace !important;
+  }
+  .brief-wrapper blockquote {
+    border-left: 3px solid #c9a84c;
+    margin: 0.75rem 0;
+    padding-left: 1rem;
+    color: __TEXT_BQ__;
+  }
+  .brief-wrapper pre {
+    background: __BG_INPUT__;
+    border-radius: 5px;
+    padding: 1rem;
+    overflow-x: auto;
+  }
+  .brief-wrapper pre code {
+    background: transparent;
+    padding: 0;
+    font-size: 0.82rem;
+    color: __TEXT_CODE__;
+    font-family: 'Courier New', monospace !important;
+  }
 
   /* ── Divider ── */
-  hr { border-color: #2e4168 !important; }
+  hr { border-color: __BORDER__ !important; }
+
+  /* ── Sidebar divider ── */
+  .sidebar-divider {
+    border: 0;
+    border-top: 1px solid __BORDER__ !important;
+    margin: 0.75rem 0 !important;
+  }
 
   /* ── Error box ── */
   [data-testid="stAlert"] {
-    background: #2a1e35 !important;
-    border: 1px solid #6b3050 !important;
-    color: #f0a0b8 !important;
+    background: __ERR_BG__ !important;
+    border: 1px solid __ERR_BORDER__ !important;
+    color: __ERR_TEXT__ !important;
     border-radius: 6px !important;
-    font-family: Arial, sans-serif !important;
   }
 
   /* ── Sidebar ── */
-  [data-testid="stSidebar"] {
-    background-color: #142038 !important;
-    border-right: 1px solid #2e4168 !important;
-  }
-  [data-testid="stSidebar"] .section-label {
-    margin-top: 0.25rem;
+  [data-testid="stSidebar"],
+  [data-testid="stSidebar"] > div,
+  [data-testid="stSidebarContent"] {
+    background-color: __BG_SIDEBAR__ !important;
+    border-right: 1px solid __BORDER__ !important;
   }
   [data-testid="stSidebar"] label {
-    color: #b8c8e0 !important;
-    font-family: Arial, sans-serif !important;
+    color: __TEXT_LABEL__ !important;
     font-size: 0.82rem !important;
   }
-  [data-testid="stSidebar"] p,
-  [data-testid="stSidebar"] span,
-  [data-testid="stSidebar"] div {
-    font-family: Arial, sans-serif;
+
+  /* ── Theme toggle row ── */
+  .theme-toggle-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: __TOGGLE_BG__;
+    border: 1px solid __BORDER__;
+    border-radius: 6px;
+    padding: 0.4rem 0.6rem;
+    margin-bottom: 0.25rem;
+  }
+  .theme-toggle-label {
+    font-size: 0.78rem;
+    color: __TOGGLE_LABEL__;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    flex: 1;
   }
 
   /* ── Tier badges ── */
   .tier-badge-standard {
     display: inline-block;
-    background: #21325a;
-    color: #8fa8cc;
-    border: 1px solid #2e4168;
+    background: __TIER_STD_BG__;
+    color: __TIER_STD_TEXT__;
+    border: 1px solid __TIER_STD_BORDER__;
     border-radius: 4px;
-    font-family: Arial, sans-serif;
-    font-size: 0.72rem;
+    font-size: 0.7rem;
     font-weight: 700;
-    padding: 0.15rem 0.5rem;
+    padding: 0.12rem 0.5rem;
     letter-spacing: 0.06em;
     text-transform: uppercase;
   }
   .tier-badge-premium {
     display: inline-block;
-    background: rgba(240,180,41,0.14);
-    color: #f0b429;
-    border: 1px solid #f0b429;
+    background: __TIER_PREM_BG__;
+    color: __TIER_PREM_TEXT__;
+    border: 1px solid __TIER_PREM_BORDER__;
     border-radius: 4px;
-    font-family: Arial, sans-serif;
-    font-size: 0.72rem;
+    font-size: 0.7rem;
     font-weight: 700;
-    padding: 0.15rem 0.5rem;
+    padding: 0.12rem 0.5rem;
     letter-spacing: 0.06em;
     text-transform: uppercase;
   }
   .lock-note {
-    color: #6a7a9a;
-    font-family: Arial, sans-serif;
-    font-size: 0.75rem;
+    color: __LOCK_COLOR__;
+    font-size: 0.73rem;
     font-style: italic;
+    line-height: 1.2;
+    margin: -0.1rem 0 0.35rem 1.6rem;
+    display: block;
   }
 
-  /* ── Checkboxes, radios, selects ── */
-  [data-testid="stCheckbox"] label,
-  [data-testid="stRadio"] label {
-    font-family: Arial, sans-serif !important;
-    color: #b8c8e0 !important;
+  /* ── Sidebar checkboxes & radios — spacing ── */
+  [data-testid="stSidebar"] [data-testid="stCheckbox"] {
+    margin-bottom: 0.05rem;
   }
-  [data-testid="stSelectbox"] label {
-    font-family: Arial, sans-serif !important;
+  [data-testid="stSidebar"] [data-testid="stRadio"] > div {
+    gap: 0.45rem !important;
+  }
+  [data-testid="stSidebar"] [data-testid="stRadio"] label {
+    padding: 0.25rem 0 !important;
   }
 
-  /* ── Captions / small text ── */
-  [data-testid="stCaptionContainer"] {
-    font-family: Arial, sans-serif !important;
-    color: #8fa8cc !important;
+  /* ── Session stats ── */
+  .session-stats {
+    font-size: 0.78rem;
+    color: __STATS_COLOR__;
+    line-height: 1.7;
+    margin: 0;
   }
+  .session-stats strong { color: __STATS_STRONG__; }
+
+  /* ── Output meta line ── */
+  .output-meta {
+    font-size: 0.82rem;
+    color: __META_COLOR__;
+    margin: 0;
+  }
+  .output-meta strong { color: __META_STRONG__; }
+
+  /* ── Empty state placeholder ── */
+  .empty-state {
+    height: 420px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border: 1px dashed __EMPTY_BORDER__;
+    border-radius: 8px;
+    text-align: center;
+    padding: 2rem;
+    color: __EMPTY_COLOR__;
+  }
+  .empty-state .icon { font-size: 2.5rem; margin-bottom: 1rem; opacity: 0.45; }
+  .empty-state .title {
+    font-size: 0.92rem;
+    font-weight: 600;
+    color: __EMPTY_STRONG__;
+    margin-bottom: 0.4rem;
+  }
+  .empty-state .sub {
+    font-size: 0.8rem;
+    color: __EMPTY_SUB__;
+    max-width: 340px;
+    line-height: 1.6;
+  }
+  .empty-state .sub strong { color: __EMPTY_STRONG__; }
+
+  /* ── Captions ── */
+  [data-testid="stCaptionContainer"] { color: __TEXT_MUTED__ !important; }
 
   /* ── Expander ── */
   [data-testid="stExpander"] {
-    background: #1e2d4a !important;
-    border: 1px solid #2e4168 !important;
+    background: __BG_EXPANDER__ !important;
+    border: 1px solid __BORDER__ !important;
     border-radius: 6px !important;
   }
-  [data-testid="stExpander"] summary {
-    font-family: Arial, sans-serif !important;
-    color: #b8c8e0 !important;
-  }
+  [data-testid="stExpander"] summary { color: __TEXT_LABEL__ !important; }
 </style>
-""", unsafe_allow_html=True)
+"""
+
+
+def _build_css(t: dict) -> str:
+    css = _CSS_TEMPLATE
+    for k, v in t.items():
+        css = css.replace(f"__{k}__", v)
+    return css
+
+
+# Theme state — initialize before first CSS injection
+if "sb_theme_toggle" not in st.session_state:
+    st.session_state["sb_theme_toggle"] = False  # dark by default
+
+_theme = _LIGHT if st.session_state.get("sb_theme_toggle", False) else _DARK
+st.markdown(_build_css(_theme), unsafe_allow_html=True)
 
 
 # ---------------------------------------------------------------------------
@@ -621,20 +834,38 @@ if "brief_count" not in st.session_state:
 
 
 # ---------------------------------------------------------------------------
-# Sidebar — Tier gate, Model Quality, Data Sources
+# Sidebar — Theme toggle · Tier gate · Model Quality · Data Sources
 # ---------------------------------------------------------------------------
 
 with st.sidebar:
     tier = st.session_state["tier"]
 
-    # ── Tier status ──────────────────────────────────────────────────────────
-    st.markdown('<div class="section-label">Pricing Tier</div>', unsafe_allow_html=True)
+    # ── Theme toggle (top of sidebar) ────────────────────────────────────────
+    toggle_label = "Light mode" if not st.session_state.get("sb_theme_toggle") else "Dark mode"
+    st.markdown(
+        f'<div class="theme-toggle-row">'
+        f'<span class="theme-toggle-label">{toggle_label}</span>',
+        unsafe_allow_html=True,
+    )
+    st.toggle(
+        "Switch theme",
+        key="sb_theme_toggle",
+        label_visibility="collapsed",
+    )
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    st.markdown('<hr class="sidebar-divider">', unsafe_allow_html=True)
+
+    # ── Pricing tier ─────────────────────────────────────────────────────────
+    st.markdown('<span class="section-label">Pricing Tier</span>', unsafe_allow_html=True)
 
     if tier == "premium":
         st.markdown(
-            '<span class="tier-badge-premium">Premium</span> — Opus unlocked · Unlimited briefs',
+            '<span class="tier-badge-premium">Premium</span>',
             unsafe_allow_html=True,
         )
+        st.caption("Opus unlocked · Unlimited briefs · All data sources")
+        st.markdown("<br>", unsafe_allow_html=True)
         if st.button("Downgrade to Standard", key="sb_downgrade", use_container_width=True):
             st.session_state["tier"] = "standard"
             st.session_state["brief_count"] = 0
@@ -643,10 +874,10 @@ with st.sidebar:
         briefs_used = st.session_state["brief_count"]
         briefs_left = max(0, STANDARD_BRIEF_LIMIT - briefs_used)
         st.markdown(
-            f'<span class="tier-badge-standard">Standard</span> '
-            f'— {briefs_left}/{STANDARD_BRIEF_LIMIT} briefs remaining',
+            f'<span class="tier-badge-standard">Standard</span>',
             unsafe_allow_html=True,
         )
+        st.caption(f"{briefs_left} of {STANDARD_BRIEF_LIMIT} briefs remaining this session")
         st.markdown("<br>", unsafe_allow_html=True)
         with st.expander("Unlock Premium", expanded=False):
             pw_input = st.text_input(
@@ -663,27 +894,17 @@ with st.sidebar:
                 else:
                     st.error("Incorrect password.")
 
-    st.markdown(
-        '<div style="border-top:1px solid #2a2d35;margin:0.85rem 0 0.75rem 0;"></div>',
-        unsafe_allow_html=True,
-    )
+    st.markdown('<hr class="sidebar-divider">', unsafe_allow_html=True)
 
-    # ── Model Quality ─────────────────────────────────────────────────────────
-    st.markdown('<div class="section-label">Model Quality</div>', unsafe_allow_html=True)
+    # ── Model quality ─────────────────────────────────────────────────────────
+    st.markdown('<span class="section-label">Model Quality</span>', unsafe_allow_html=True)
 
-    model_options = [
-        "Standard — Sonnet (~$0.20/brief)",
-        "Premium — Opus (~$3–5/brief)",
-    ]
     if tier == "standard":
-        st.markdown(
-            '<span class="lock-note">Standard tier: Sonnet only. Upgrade to unlock Opus.</span>',
-            unsafe_allow_html=True,
-        )
+        st.caption("Sonnet only on Standard tier")
         st.session_state["sb_model_mode"] = "standard"
-        model_selection = st.radio(
+        st.radio(
             "Model",
-            options=model_options[:1],
+            options=["Sonnet — Standard (~$0.20/brief)"],
             index=0,
             key="sb_model_radio_std",
             label_visibility="collapsed",
@@ -691,7 +912,10 @@ with st.sidebar:
     else:
         model_selection = st.radio(
             "Model",
-            options=model_options,
+            options=[
+                "Sonnet — Standard (~$0.20/brief)",
+                "Opus — Premium (~$3–5/brief)",
+            ],
             index=0,
             key="sb_model_radio_prem",
             label_visibility="collapsed",
@@ -702,54 +926,47 @@ with st.sidebar:
 
     model_mode = st.session_state.get("sb_model_mode", "standard")
 
-    st.markdown(
-        '<div style="border-top:1px solid #2a2d35;margin:0.85rem 0 0.75rem 0;"></div>',
-        unsafe_allow_html=True,
-    )
+    st.markdown('<hr class="sidebar-divider">', unsafe_allow_html=True)
 
-    # ── Data Sources ──────────────────────────────────────────────────────────
-    st.markdown('<div class="section-label">Data Sources</div>', unsafe_allow_html=True)
+    # ── Data sources ──────────────────────────────────────────────────────────
+    st.markdown('<span class="section-label">Data Sources</span>', unsafe_allow_html=True)
 
     _ds_defs = [
-        ("sec_edgar",      "SEC EDGAR",                    False),
-        ("yahoo_finance",  "Yahoo Finance",                False),
-        ("bls",            "BLS Labor Data",               False),
-        ("damodaran",      "Damodaran Industry Multiples", True),   # premium only
-        ("naver_finance",  "Naver Finance (Korean/Asian)", True),   # premium only
-        ("news",           "News Sweep (accredited only)", False),
+        ("sec_edgar",     "SEC EDGAR",                    False),
+        ("yahoo_finance", "Yahoo Finance",                False),
+        ("bls",           "BLS Labor Data",               False),
+        ("news",          "News Sweep (accredited)",      False),
+        ("damodaran",     "Damodaran Multiples",          True),
+        ("naver_finance", "Naver Finance (Korea/Asia)",   True),
     ]
 
     selected_sources: list[str] = []
     for src_key, src_label, premium_only in _ds_defs:
         locked = premium_only and tier == "standard"
-        display_label = f"{src_label} 🔒" if locked else src_label
+        label = f"🔒 {src_label}" if locked else src_label
+        help_text = "Requires Premium tier" if locked else None
         cb_val = st.checkbox(
-            display_label,
-            value=(not locked),   # on by default unless locked
+            label,
+            value=(not locked),
             disabled=locked,
             key=f"ds_{src_key}",
+            help=help_text,
         )
-        if locked:
-            st.markdown('<span class="lock-note">Premium only</span>', unsafe_allow_html=True)
         if cb_val and not locked:
             selected_sources.append(src_key)
 
-    # Persist selected_sources to session state for access in generation blocks
     st.session_state["_selected_sources"] = selected_sources
 
-    st.markdown(
-        '<div style="border-top:1px solid #2a2d35;margin:0.85rem 0 0.75rem 0;"></div>',
-        unsafe_allow_html=True,
-    )
+    st.markdown('<hr class="sidebar-divider">', unsafe_allow_html=True)
 
     # ── Session stats ─────────────────────────────────────────────────────────
-    st.markdown('<div class="section-label">Session</div>', unsafe_allow_html=True)
+    st.markdown('<span class="section-label">Session</span>', unsafe_allow_html=True)
     bc = st.session_state["brief_count"]
     tier_label = "Premium" if tier == "premium" else "Standard"
     st.markdown(
-        f'<p style="color:#6b7090;font-size:0.78rem;margin:0;">'
-        f'Briefs generated: <strong style="color:#8b8fa8;">{bc}</strong><br>'
-        f'Tier: <strong style="color:#8b8fa8;">{tier_label}</strong>'
+        f'<p class="session-stats">'
+        f'Briefs generated: <strong>{bc}</strong><br>'
+        f'Tier: <strong>{tier_label}</strong>'
         f'</p>',
         unsafe_allow_html=True,
     )
@@ -828,8 +1045,8 @@ def render_output_block(result_key: str, inputs_key: str, error_key: str,
 
         with meta_col:
             st.markdown(
-                f'<p style="color:#8b8fa8;font-size:0.82rem;margin:0;">'
-                f'<strong style="color:#c9a84c;">{company}</strong> · '
+                f'<p class="output-meta">'
+                f'<strong>{company}</strong> · '
                 f'{inputs.get("industry", "")} · {today}'
                 f'</p>',
                 unsafe_allow_html=True,
@@ -879,26 +1096,10 @@ def render_output_block(result_key: str, inputs_key: str, error_key: str,
         icon = "📋" if label == "brief" else "📊"
         action = "Generate Brief" if label == "brief" else "Generate VCP"
         st.markdown(f"""
-<div style="
-  height: 420px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  color: #3d4259;
-  border: 1px dashed #2a2d35;
-  border-radius: 8px;
-  text-align: center;
-  padding: 2rem;
-">
-  <div style="font-size: 2.5rem; margin-bottom: 1rem; opacity: 0.5;">{icon}</div>
-  <div style="font-size: 0.92rem; font-weight: 600; color: #4a5070; margin-bottom: 0.4rem;">
-    Output will appear here
-  </div>
-  <div style="font-size: 0.8rem; color: #363b54; max-width: 340px; line-height: 1.6;">
-    Fill in the details on the left and click
-    <strong style="color:#4a5070;">{action}</strong>.
-  </div>
+<div class="empty-state">
+  <div class="icon">{icon}</div>
+  <div class="title">Output will appear here</div>
+  <div class="sub">Fill in the details on the left and click <strong>{action}</strong>.</div>
 </div>
 """, unsafe_allow_html=True)
 
