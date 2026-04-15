@@ -41,6 +41,33 @@ _CACHE_DIR = _PROJECT_ROOT / "output" / "news_cache"
 _GNEWS_RSS = "https://news.google.com/rss/search?q={query}&hl=en-US&gl=US&ceid=US:en"
 
 # ---------------------------------------------------------------------------
+# Accredited sources whitelist
+# Only these outlets are included when accredited_only=True.
+# ---------------------------------------------------------------------------
+
+_ACCREDITED_SOURCES: set[str] = {
+    "pr newswire", "prnewswire",
+    "business wire", "businesswire",
+    "reuters",
+    "associated press", "ap news", "ap",
+    "wall street journal", "wsj",
+    "financial times", "ft",
+    "bloomberg",
+    "barron's", "barrons",
+    "new york times", "nyt", "nytimes",
+    "forbes",
+    "fortune",
+    "korea economic daily", "한국경제",
+    "korea herald", "코리아헤럴드",
+}
+
+
+def _is_accredited(source: str) -> bool:
+    """Return True if the source matches any whitelisted outlet."""
+    lower = source.lower().strip()
+    return any(acc in lower for acc in _ACCREDITED_SOURCES)
+
+# ---------------------------------------------------------------------------
 # Categorization
 # ---------------------------------------------------------------------------
 
@@ -325,6 +352,7 @@ async def _fetch_google_rss(company_name: str) -> list[NewsItem]:
 async def fetch_recent_news(
     company_name: str,
     days_back: int = 90,
+    accredited_only: bool = True,
 ) -> NewsResult:
     """
     Fetch recent news for a company.
@@ -332,8 +360,9 @@ async def fetch_recent_news(
     Priority: Puppeteer subprocess → cache file → Google News RSS.
 
     Args:
-        company_name: Target company name
-        days_back:    Informational only (Puppeteer/RSS return whatever Google shows)
+        company_name:    Target company name
+        days_back:       Informational only (Puppeteer/RSS return whatever Google shows)
+        accredited_only: When True, filter articles to whitelisted accredited sources only
 
     Returns:
         NewsResult with categorized articles and risk flags
@@ -346,6 +375,9 @@ async def fetch_recent_news(
         items = await _fetch_puppeteer(company_name)
         result.articles = items
         result.source_used = "puppeteer"
+        if accredited_only:
+            result.articles = [a for a in result.articles if _is_accredited(a.source)]
+            result.source_used += " (accredited)"
         return result
     except Exception as exc:
         errors.append(f"puppeteer: {exc}")
@@ -355,7 +387,9 @@ async def fetch_recent_news(
     if cached:
         items, cache_name = cached
         result.articles = items
-        result.source_used = f"cache ({cache_name})"
+        if accredited_only:
+            result.articles = [a for a in result.articles if _is_accredited(a.source)]
+        result.source_used = f"cache ({cache_name})" + (" (accredited)" if accredited_only else "")
         if errors:
             result.error = " | ".join(errors)
         return result
@@ -363,7 +397,9 @@ async def fetch_recent_news(
     # --- Source 3: Google News RSS ---
     try:
         result.articles = await _fetch_google_rss(company_name)
-        result.source_used = "google_rss"
+        if accredited_only:
+            result.articles = [a for a in result.articles if _is_accredited(a.source)]
+        result.source_used = "google_rss" + (" (accredited)" if accredited_only else "")
     except Exception as exc:
         errors.append(f"rss: {exc}")
         result.source_used = "none"

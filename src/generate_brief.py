@@ -33,6 +33,11 @@ sys.path.insert(0, str(Path(__file__).parent))
 from data_sources.sec_edgar import fetch_sec_comps, SICLookup
 from data_sources.news import fetch_recent_news, NewsResult
 from data_sources.bls import fetch_bls_benchmarks
+from data_sources.yahoo_finance import fetch_yahoo_finance_comps
+from data_sources.damodaran import fetch_damodaran_multiples
+from data_sources.naver_finance import fetch_naver_finance
+
+from tier import STANDARD_MODEL, PREMIUM_MODEL, get_model_for_section, get_research_model
 
 # ---------------------------------------------------------------------------
 # Paths
@@ -43,7 +48,8 @@ SECTION_PROMPTS_DIR = PROMPTS_DIR / "section_prompts"
 TEMPLATES_DIR = BASE_DIR / "templates"
 OUTPUT_DIR = BASE_DIR / "output"
 
-MODEL = "claude-sonnet-4-6"
+# Default data sources (non-premium)
+DEFAULT_DATA_SOURCES = ["sec_edgar", "yahoo_finance", "bls", "news"]
 
 
 # ---------------------------------------------------------------------------
@@ -99,6 +105,7 @@ async def run_research_agent(
     company_name: str,
     description: str,
     industry: str,
+    model: str = STANDARD_MODEL,
 ) -> tuple[str, list[str]]:
     """
     Use Claude + web_search tool to gather operational intelligence.
@@ -122,7 +129,7 @@ async def run_research_agent(
 
     for iteration in range(10):  # safety cap
         response = await client.messages.create(
-            model=MODEL,
+            model=model,
             max_tokens=8096,
             tools=[{"type": "web_search_20250305", "name": "web_search", "max_uses": 8}],
             messages=messages,
@@ -161,13 +168,15 @@ async def generate_section(
     system_prompt: str,
     section_name: str,
     context: dict,
+    model: str = STANDARD_MODEL,
     max_retries: int = 6,
 ) -> str:
     """
     Generate a single section of the brief via a single Claude call.
     Auto-retries on 429 rate-limit errors with exponential backoff (15s, 30s, 60s...).
     """
-    print(f"  [generate] Writing: {section_name}...")
+    model_tag = " [Opus]" if model == PREMIUM_MODEL else ""
+    print(f"  [generate] Writing: {section_name}{model_tag}...")
 
     section_template = load_template(section_name, section=True)
 
@@ -181,7 +190,7 @@ async def generate_section(
     for attempt in range(max_retries):
         try:
             response = await client.messages.create(
-                model=MODEL,
+                model=model,
                 max_tokens=4096,
                 system=system_prompt,
                 messages=[{"role": "user", "content": user_prompt}],
@@ -229,19 +238,31 @@ async def generate_brief(
     context_notes: str = "",
     modules: list[str] | None = None,
     style_reference: str = "",
+    data_sources: list[str] | None = None,
+    model_mode: str = "standard",
 ) -> str:
     """
-    modules: list of section keys to generate (default: all).
+    modules:      list of section keys to generate (default: all).
     style_reference: extracted text from an uploaded document to mirror.
+    data_sources: list of enabled data source keys, e.g. ["sec_edgar", "bls", "news"].
+                  Defaults to all non-premium sources.
+    model_mode:   "standard" (Sonnet for all) or "premium" (Opus for key sections).
     """
     if modules is None:
         modules = ALL_MODULES
+    if data_sources is None:
+        data_sources = DEFAULT_DATA_SOURCES
+
+    ds = set(data_sources)
 
     api_key = os.environ.get("ANTHROPIC_API_KEY")
     if not api_key:
         sys.exit("Error: ANTHROPIC_API_KEY environment variable not set.")
 
     client = anthropic.AsyncAnthropic(api_key=api_key)
+    research_model = get_research_model(model_mode)
+    print(f"\n[Mode] {'Premium (Opus for key sections)' if model_mode == 'premium' else 'Standard (Sonnet)'}")
+    print(f"[Sources] {sorted(ds)}")
 
     # -----------------------------------------------------------------------
     # Phase 1: Web research + real data fetches + template loading — all parallel
@@ -256,7 +277,7 @@ async def generate_brief(
                 "**STYLE REFERENCE DOCUMENT (uploaded by user)**\n"
                 "Mirror the structure, tone, and formatting style of this document "
                 "when generating each section. Adapt content but match the voice and layout:\n\n"
-                f"{style_reference[:6000]}"  # cap at ~6k chars to stay within token budget
+                f"{style_reference[:6000]}"
             )
             system_prompt = base_system + style_addendum
         else:
@@ -264,65 +285,115 @@ async def generate_brief(
         brief_template = (TEMPLATES_DIR / "brief_template.md").read_text()
         return system_prompt, brief_template
 
-    async def fetch_real_data() -> tuple[object, object, object]:
-        """Fetch SEC comps, news, and BLS benchmarks concurrently."""
-        sec_comps, news, bls = await asyncio.gather(
-            fetch_sec_comps(industry),
-            fetch_recent_news(company_name),
-            fetch_bls_benchmarks(industry),
-        )
-        return sec_comps, news, bls
+    async def fetch_real_data():
+        """Conditionally fetch enabled data sources concurrently."""
+        tasks = {}
 
-    (research_text, sources), (system_prompt, brief_template), (sec_comps, news_result, bls_bench) = (
+        if "sec_edgar" in ds:
+            tasks["sec_edgar"] = fetch_sec_comps(industry)
+        if "news" in ds:
+            tasks["news"] = fetch_recent_news(company_name, accredited_only=True)
+        if "bls" in ds:
+            tasks["bls"] = fetch_bls_benchmarks(industry)
+        if "yahoo_finance" in ds:
+            tasks["yahoo_finance"] = fetch_yahoo_finance_comps(industry)
+        if "damodaran" in ds:
+            tasks["damodaran"] = fetch_damodaran_multiples(industry)
+        if "naver_finance" in ds:
+            tasks["naver_finance"] = fetch_naver_finance(company_name)
+
+        if not tasks:
+            return {}
+
+        keys = list(tasks.keys())
+        results_list = await asyncio.gather(*tasks.values(), return_exceptions=True)
+        return dict(zip(keys, results_list))
+
+    (research_text, sources), (system_prompt, brief_template), data_results = (
         await asyncio.gather(
-            run_research_agent(client, company_name, description, industry),
+            run_research_agent(client, company_name, description, industry, model=research_model),
             load_static_templates(),
             fetch_real_data(),
         )
     )
 
+    # Unpack results with graceful fallback for each source
+    sec_comps     = data_results.get("sec_edgar")
+    news_result   = data_results.get("news")
+    bls_bench     = data_results.get("bls")
+    yf_result     = data_results.get("yahoo_finance")
+    damo_result   = data_results.get("damodaran")
+    naver_result  = data_results.get("naver_finance")
+
     # Log data pull results
-    sic_code, _ = SICLookup.lookup(industry)
-    print(f"  [data] SEC EDGAR: {len(sec_comps.comps)} comps found (SIC {sec_comps.sic_code})"
-          + (f" — {sec_comps.error}" if sec_comps.error else ""))
-    print(f"  [data] News: {len(news_result.articles)} articles via {news_result.source_used}"
-          + (f" — {news_result.error}" if news_result.error else ""))
-    print(f"  [data] BLS: {bls_bench.industry_label}"
-          + (f" — {bls_bench.error}" if bls_bench.error else ""))
+    if sec_comps and not isinstance(sec_comps, Exception):
+        print(f"  [data] SEC EDGAR: {len(sec_comps.comps)} comps (SIC {sec_comps.sic_code})"
+              + (f" — {sec_comps.error}" if sec_comps.error else ""))
+    if news_result and not isinstance(news_result, Exception):
+        print(f"  [data] News: {len(news_result.articles)} articles via {news_result.source_used}")
+    if bls_bench and not isinstance(bls_bench, Exception):
+        print(f"  [data] BLS: {bls_bench.industry_label}")
+    if yf_result and not isinstance(yf_result, Exception):
+        valid_snaps = [s for s in yf_result.snapshots if not s.error]
+        print(f"  [data] Yahoo Finance: {len(valid_snaps)} valid comp snapshots")
+    if damo_result and not isinstance(damo_result, Exception):
+        print(f"  [data] Damodaran: {damo_result.industry_label} — EV/EBITDA {damo_result.ev_ebitda}x ({damo_result.source})")
+    if naver_result and not isinstance(naver_result, Exception):
+        if naver_result.error:
+            print(f"  [data] Naver Finance: {naver_result.error}")
+        else:
+            print(f"  [data] Naver Finance: {naver_result.company_name} ({naver_result.stock_code})")
 
     research_summary = research_text.strip() if research_text.strip() else (
         "No public research data found — assess all hypotheses in management diligence."
     )
 
     # Build context blocks for the comps section prompt
-    sec_comps_markdown = (
-        f"**SIC {sec_comps.sic_code} — {sec_comps.sic_label}**\n\n"
-        + sec_comps.to_markdown_table()
-        if not sec_comps.error
-        else f"_SEC EDGAR data unavailable: {sec_comps.error}_"
-    )
+    sec_comps_markdown = "_SEC EDGAR not enabled._"
+    if sec_comps and not isinstance(sec_comps, Exception):
+        sec_comps_markdown = (
+            f"**SIC {sec_comps.sic_code} — {sec_comps.sic_label}**\n\n"
+            + sec_comps.to_markdown_table()
+            if not sec_comps.error
+            else f"_SEC EDGAR data unavailable: {sec_comps.error}_"
+        )
 
-    bls_benchmark_markdown = (
-        bls_bench.to_markdown()
-        if not bls_bench.error
-        else f"_BLS data unavailable: {bls_bench.error}_"
-    )
+    bls_benchmark_markdown = "_BLS labor data not enabled._"
+    if bls_bench and not isinstance(bls_bench, Exception):
+        bls_benchmark_markdown = (
+            bls_bench.to_markdown()
+            if not bls_bench.error
+            else f"_BLS data unavailable: {bls_bench.error}_"
+        )
 
-    # Cap news context: only pass risk flags + top 10 items to stay under token budget.
-    # Full article list is stored in the NewsResult but doesn't need to go to the LLM.
-    top_articles = sorted(
-        news_result.articles,
-        key=lambda a: (not a.is_risk_flag, a.date),
-        reverse=False,
-    )[:12]
-    news_trimmed = NewsResult(
-        company_name=news_result.company_name,
-        days_searched=news_result.days_searched,
-        articles=top_articles,
-        source_used=news_result.source_used,
-        error=news_result.error,
-    )
-    news_summary_markdown = news_trimmed.to_summary_markdown()
+    yf_markdown = ""
+    if yf_result and not isinstance(yf_result, Exception):
+        yf_markdown = "\n\n" + yf_result.to_markdown()
+
+    damo_markdown = ""
+    if damo_result and not isinstance(damo_result, Exception):
+        damo_markdown = "\n\n" + damo_result.to_markdown()
+
+    naver_markdown = ""
+    if naver_result and not isinstance(naver_result, Exception) and not naver_result.error:
+        naver_markdown = "\n\n" + naver_result.to_markdown()
+
+    # Cap news context to stay under token budget
+    news_summary_markdown = "_News sweep not enabled._"
+    if news_result and not isinstance(news_result, Exception):
+        top_articles = sorted(
+            news_result.articles,
+            key=lambda a: (not a.is_risk_flag, a.date),
+            reverse=False,
+        )[:12]
+        news_trimmed = NewsResult(
+            company_name=news_result.company_name,
+            days_searched=news_result.days_searched,
+            articles=top_articles,
+            source_used=news_result.source_used,
+            error=news_result.error,
+        )
+        news_summary_markdown = news_trimmed.to_summary_markdown()
 
     base_context = {
         "company_name": company_name,
@@ -331,22 +402,21 @@ async def generate_brief(
         "ev_range": ev_range,
         "context_notes": context_notes or "None provided.",
         "research_summary": research_summary,
-        # Real data for Section 3
-        "sec_comps_markdown": sec_comps_markdown,
-        "bls_benchmark_markdown": bls_benchmark_markdown,
-        "news_summary_markdown": news_summary_markdown,
+        # Data source context for Section 3 (comps & benchmarks)
+        "sec_comps_markdown":     sec_comps_markdown,
+        "bls_benchmark_markdown": bls_benchmark_markdown + yf_markdown + damo_markdown + naver_markdown,
+        "news_summary_markdown":  news_summary_markdown,
     }
 
     async def gen(section_key: str, ctx: dict) -> str:
         if section_key not in modules:
             print(f"  [generate] Skipping (disabled): {section_key}")
             return "_Section excluded from this brief._"
-        return await generate_section(client, system_prompt, section_key, ctx)
+        section_model = get_model_for_section(section_key, model_mode)
+        return await generate_section(client, system_prompt, section_key, ctx, model=section_model)
 
     # -----------------------------------------------------------------------
-    # Phase 2: Sections generated sequentially with auto-retry on rate limits.
-    # Parallel generation hits the 30k token/min limit too easily; sequential
-    # with backoff is more reliable across different API tier sizes.
+    # Phase 2: Sections 1–5 sequentially
     # -----------------------------------------------------------------------
     print("\n[Phase 2] Generating sections 1–5 sequentially...")
     exec_summary     = await gen("exec_summary",     base_context)
@@ -356,7 +426,7 @@ async def generate_brief(
     value_creation   = await gen("value_creation",   base_context)
 
     # -----------------------------------------------------------------------
-    # Phase 3: Sections 6–7 sequentially (depend on risk_flags + value_creation)
+    # Phase 3: Sections 6–7 (depend on risk_flags + value_creation)
     # -----------------------------------------------------------------------
     print("\n[Phase 3] Generating sections 6–7...")
 
@@ -376,15 +446,23 @@ async def generate_brief(
 
     today = date.today().strftime("%Y-%m-%d")
 
-    # Merge web search sources with real data sources
+    # Merge web search sources with data source attributions
     source_lines = list(dict.fromkeys(f"- {url}" for url in sources)) if sources else [
         "- Desk research based on LLM training data (no live URLs captured)"
     ]
-    source_lines += [
-        f"- SEC EDGAR XBRL API — SIC {sec_comps.sic_code} public comp financials",
-        f"- BLS CES API — {bls_bench.industry_label} labor benchmarks",
-        f"- News: {news_result.source_used} ({len(news_result.articles)} articles)",
-    ]
+    if sec_comps and not isinstance(sec_comps, Exception) and not sec_comps.error:
+        source_lines.append(f"- SEC EDGAR XBRL API — SIC {sec_comps.sic_code} public comp financials")
+    if bls_bench and not isinstance(bls_bench, Exception) and not bls_bench.error:
+        source_lines.append(f"- BLS CES API — {bls_bench.industry_label} labor benchmarks")
+    if news_result and not isinstance(news_result, Exception):
+        source_lines.append(f"- News sweep: {news_result.source_used} ({len(news_result.articles)} articles, accredited sources)")
+    if yf_result and not isinstance(yf_result, Exception):
+        source_lines.append(f"- Yahoo Finance — {yf_result.industry_label} public comp proxies")
+    if damo_result and not isinstance(damo_result, Exception):
+        source_lines.append(f"- Damodaran (NYU) — {damo_result.industry_label} industry multiples ({damo_result.source})")
+    if naver_result and not isinstance(naver_result, Exception) and not naver_result.error:
+        source_lines.append(f"- Naver Finance — {naver_result.company_name} ({naver_result.exchange})")
+
     sources_md = "\n".join(source_lines)
 
     brief = brief_template.format_map({

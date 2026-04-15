@@ -34,7 +34,7 @@ st.set_page_config(
     page_title="PE Ops Tool Suite",
     page_icon="📋",
     layout="wide",
-    initial_sidebar_state="collapsed",
+    initial_sidebar_state="expanded",
 )
 
 # ---------------------------------------------------------------------------
@@ -44,9 +44,9 @@ st.markdown("""
 <style>
   /* ── Global ── */
   html, body, [data-testid="stApp"] {
-    background-color: #0e1117;
-    color: #e8e8e8;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background-color: #1a2744;
+    color: #e8f0ff;
+    font-family: Arial, sans-serif;
   }
 
   /* ── Hide Streamlit chrome ── */
@@ -54,32 +54,35 @@ st.markdown("""
 
   /* ── Page header ── */
   .pe-header {
-    border-bottom: 1px solid #2a2d35;
+    border-bottom: 1px solid #2e4168;
     padding-bottom: 1.2rem;
     margin-bottom: 1.5rem;
   }
   .pe-header h1 {
     font-size: 1.65rem;
     font-weight: 700;
-    color: #f0f0f0;
+    font-family: Arial, sans-serif;
+    color: #f0f4ff;
     letter-spacing: -0.3px;
     margin: 0 0 0.25rem 0;
   }
   .pe-header p {
-    color: #8b8fa8;
+    color: #8fa8cc;
     font-size: 0.88rem;
+    font-family: Arial, sans-serif;
     margin: 0;
   }
 
   /* ── Tabs ── */
   [data-testid="stTabs"] [data-baseweb="tab-list"] {
     gap: 0;
-    border-bottom: 1px solid #2a2d35;
+    border-bottom: 1px solid #2e4168;
     margin-bottom: 1.5rem;
   }
   [data-testid="stTabs"] [data-baseweb="tab"] {
     background: transparent !important;
-    color: #6b7090 !important;
+    color: #7a8db0 !important;
+    font-family: Arial, sans-serif !important;
     font-size: 0.85rem;
     font-weight: 600;
     padding: 0.6rem 1.4rem;
@@ -87,25 +90,26 @@ st.markdown("""
     border-radius: 0 !important;
   }
   [data-testid="stTabs"] [aria-selected="true"] {
-    color: #c9a84c !important;
-    border-bottom: 2px solid #c9a84c !important;
+    color: #f0b429 !important;
+    border-bottom: 2px solid #f0b429 !important;
     background: transparent !important;
   }
 
   /* ── Section labels ── */
   .section-label {
     font-size: 0.7rem;
-    font-weight: 600;
+    font-weight: 700;
+    font-family: Arial, sans-serif;
     letter-spacing: 0.1em;
     text-transform: uppercase;
-    color: #c9a84c;
+    color: #f0b429;
     margin-bottom: 0.5rem;
   }
 
   /* ── Form card ── */
   .form-card {
-    background: #161b27;
-    border: 1px solid #2a2d35;
+    background: #1e2d4a;
+    border: 1px solid #2e4168;
     border-radius: 8px;
     padding: 1.5rem 1.75rem;
     margin-bottom: 1.5rem;
@@ -117,30 +121,33 @@ st.markdown("""
   [data-testid="stSelectbox"] select,
   [data-testid="stNumberInput"] input,
   div[data-baseweb="select"] {
-    background-color: #1c2030 !important;
-    border: 1px solid #2f3347 !important;
+    background-color: #21325a !important;
+    border: 1px solid #2e4168 !important;
     border-radius: 5px !important;
-    color: #e8e8e8 !important;
+    color: #e8f0ff !important;
+    font-family: Arial, sans-serif !important;
   }
   [data-testid="stTextInput"] input:focus,
   [data-testid="stTextArea"] textarea:focus,
   [data-testid="stNumberInput"] input:focus {
-    border-color: #c9a84c !important;
-    box-shadow: 0 0 0 2px rgba(201,168,76,0.18) !important;
+    border-color: #f0b429 !important;
+    box-shadow: 0 0 0 2px rgba(240,180,41,0.2) !important;
   }
   label, .stTextInput label, .stTextArea label, .stSelectbox label,
   .stNumberInput label {
-    color: #b0b5c9 !important;
+    color: #b8c8e0 !important;
+    font-family: Arial, sans-serif !important;
     font-size: 0.82rem !important;
     font-weight: 500 !important;
   }
 
   /* ── Generate button ── */
   [data-testid="stButton"] > button[kind="primary"] {
-    background: #c9a84c;
-    color: #0e1117;
+    background: #f0b429;
+    color: #1a2744;
     border: none;
     border-radius: 5px;
+    font-family: Arial, sans-serif;
     font-weight: 700;
     font-size: 0.9rem;
     padding: 0.6rem 1.8rem;
@@ -148,59 +155,156 @@ st.markdown("""
     transition: background 0.15s;
   }
   [data-testid="stButton"] > button[kind="primary"]:hover {
-    background: #e0be6a;
+    background: #f5c84a;
+  }
+
+  /* ── Secondary / plain buttons ── */
+  [data-testid="stButton"] > button:not([kind="primary"]) {
+    font-family: Arial, sans-serif !important;
+    color: #b8c8e0 !important;
+    background: #21325a !important;
+    border: 1px solid #2e4168 !important;
+    border-radius: 5px !important;
+  }
+  [data-testid="stButton"] > button:not([kind="primary"]):hover {
+    border-color: #f0b429 !important;
+    color: #f0b429 !important;
   }
 
   /* ── Download button ── */
   [data-testid="stDownloadButton"] > button {
     background: transparent;
-    border: 1px solid #c9a84c;
-    color: #c9a84c;
+    border: 1px solid #f0b429;
+    color: #f0b429;
     border-radius: 5px;
+    font-family: Arial, sans-serif;
     font-weight: 600;
     font-size: 0.85rem;
     padding: 0.45rem 1.2rem;
   }
   [data-testid="stDownloadButton"] > button:hover {
-    background: rgba(201,168,76,0.1);
+    background: rgba(240,180,41,0.12);
   }
 
   /* ── Status / progress ── */
   [data-testid="stStatus"] {
-    background: #161b27 !important;
-    border: 1px solid #2a2d35 !important;
+    background: #1e2d4a !important;
+    border: 1px solid #2e4168 !important;
     border-radius: 6px !important;
+    font-family: Arial, sans-serif !important;
   }
 
   /* ── Brief / VCP output area ── */
   .brief-wrapper {
-    background: #161b27;
-    border: 1px solid #2a2d35;
+    background: #1e2d4a;
+    border: 1px solid #2e4168;
     border-radius: 8px;
     padding: 2rem 2.25rem;
+    font-family: Arial, sans-serif;
   }
-  .brief-wrapper h1 { color: #f0f0f0; font-size: 1.4rem; border-bottom: 1px solid #2a2d35; padding-bottom: 0.5rem; }
-  .brief-wrapper h2 { color: #c9a84c; font-size: 1.05rem; margin-top: 1.8rem; }
-  .brief-wrapper h3 { color: #d4d8ea; font-size: 0.95rem; }
-  .brief-wrapper p  { color: #c5c9dc; line-height: 1.7; }
-  .brief-wrapper li { color: #c5c9dc; line-height: 1.6; }
-  .brief-wrapper table { border-collapse: collapse; width: 100%; }
-  .brief-wrapper th { background: #1f2535; color: #c9a84c; padding: 0.5rem 0.75rem; font-size: 0.8rem; text-align: left; }
-  .brief-wrapper td { padding: 0.45rem 0.75rem; border-bottom: 1px solid #242836; color: #c5c9dc; font-size: 0.85rem; }
-  .brief-wrapper code { background: #1c2030; border-radius: 3px; padding: 0.1em 0.35em; font-size: 0.85em; }
-  .brief-wrapper blockquote { border-left: 3px solid #c9a84c; margin: 0.75rem 0; padding-left: 1rem; color: #8b8fa8; }
-  .brief-wrapper pre { background: #1c2030; border-radius: 5px; padding: 1rem; overflow-x: auto; }
-  .brief-wrapper pre code { background: transparent; padding: 0; font-size: 0.82rem; color: #b8c0d8; }
+  .brief-wrapper h1 { color: #f0f4ff; font-family: Arial, sans-serif; font-size: 1.4rem; border-bottom: 1px solid #2e4168; padding-bottom: 0.5rem; }
+  .brief-wrapper h2 { color: #f0b429; font-family: Arial, sans-serif; font-size: 1.05rem; margin-top: 1.8rem; }
+  .brief-wrapper h3 { color: #dce6f4; font-family: Arial, sans-serif; font-size: 0.95rem; }
+  .brief-wrapper p  { color: #d0daf0; font-family: Arial, sans-serif; line-height: 1.7; }
+  .brief-wrapper li { color: #d0daf0; font-family: Arial, sans-serif; line-height: 1.6; }
+  .brief-wrapper table { border-collapse: collapse; width: 100%; font-family: Arial, sans-serif; }
+  .brief-wrapper th { background: #21325a; color: #f0b429; padding: 0.5rem 0.75rem; font-size: 0.8rem; text-align: left; }
+  .brief-wrapper td { padding: 0.45rem 0.75rem; border-bottom: 1px solid #263a5e; color: #d0daf0; font-size: 0.85rem; }
+  .brief-wrapper code { background: #21325a; border-radius: 3px; padding: 0.1em 0.35em; font-size: 0.85em; font-family: 'Courier New', monospace; }
+  .brief-wrapper blockquote { border-left: 3px solid #f0b429; margin: 0.75rem 0; padding-left: 1rem; color: #8fa8cc; }
+  .brief-wrapper pre { background: #21325a; border-radius: 5px; padding: 1rem; overflow-x: auto; }
+  .brief-wrapper pre code { background: transparent; padding: 0; font-size: 0.82rem; color: #b8c8e0; }
 
   /* ── Divider ── */
-  hr { border-color: #2a2d35 !important; }
+  hr { border-color: #2e4168 !important; }
 
   /* ── Error box ── */
   [data-testid="stAlert"] {
-    background: #1e1424 !important;
-    border: 1px solid #5c2d3f !important;
-    color: #f0a0a8 !important;
+    background: #2a1e35 !important;
+    border: 1px solid #6b3050 !important;
+    color: #f0a0b8 !important;
     border-radius: 6px !important;
+    font-family: Arial, sans-serif !important;
+  }
+
+  /* ── Sidebar ── */
+  [data-testid="stSidebar"] {
+    background-color: #142038 !important;
+    border-right: 1px solid #2e4168 !important;
+  }
+  [data-testid="stSidebar"] .section-label {
+    margin-top: 0.25rem;
+  }
+  [data-testid="stSidebar"] label {
+    color: #b8c8e0 !important;
+    font-family: Arial, sans-serif !important;
+    font-size: 0.82rem !important;
+  }
+  [data-testid="stSidebar"] p,
+  [data-testid="stSidebar"] span,
+  [data-testid="stSidebar"] div {
+    font-family: Arial, sans-serif;
+  }
+
+  /* ── Tier badges ── */
+  .tier-badge-standard {
+    display: inline-block;
+    background: #21325a;
+    color: #8fa8cc;
+    border: 1px solid #2e4168;
+    border-radius: 4px;
+    font-family: Arial, sans-serif;
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 0.15rem 0.5rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .tier-badge-premium {
+    display: inline-block;
+    background: rgba(240,180,41,0.14);
+    color: #f0b429;
+    border: 1px solid #f0b429;
+    border-radius: 4px;
+    font-family: Arial, sans-serif;
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 0.15rem 0.5rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .lock-note {
+    color: #6a7a9a;
+    font-family: Arial, sans-serif;
+    font-size: 0.75rem;
+    font-style: italic;
+  }
+
+  /* ── Checkboxes, radios, selects ── */
+  [data-testid="stCheckbox"] label,
+  [data-testid="stRadio"] label {
+    font-family: Arial, sans-serif !important;
+    color: #b8c8e0 !important;
+  }
+  [data-testid="stSelectbox"] label {
+    font-family: Arial, sans-serif !important;
+  }
+
+  /* ── Captions / small text ── */
+  [data-testid="stCaptionContainer"] {
+    font-family: Arial, sans-serif !important;
+    color: #8fa8cc !important;
+  }
+
+  /* ── Expander ── */
+  [data-testid="stExpander"] {
+    background: #1e2d4a !important;
+    border: 1px solid #2e4168 !important;
+    border-radius: 6px !important;
+  }
+  [data-testid="stExpander"] summary {
+    font-family: Arial, sans-serif !important;
+    color: #b8c8e0 !important;
   }
 </style>
 """, unsafe_allow_html=True)
@@ -244,7 +348,7 @@ def extract_text_from_upload(uploaded_file) -> str:
 # Word export utility
 # ---------------------------------------------------------------------------
 
-def markdown_to_docx(markdown_text: str, company_name: str) -> bytes:
+def markdown_to_docx(markdown_text: str, company_name: str, watermark: str = "") -> bytes:
     """
     Convert markdown to a styled .docx.
     Handles: # h1, ## h2, ### h3, **bold**, *italic*, tables, bullet lists, horizontal rules.
@@ -272,12 +376,12 @@ def markdown_to_docx(markdown_text: str, company_name: str) -> bytes:
 
     # --- Base style ---
     normal = doc.styles["Normal"]
-    normal.font.name = "Calibri"
+    normal.font.name = "Arial"
     normal.font.size = Pt(10.5)
     normal.font.color.rgb = BODY
 
     def set_run_formatting(run, bold=False, italic=False, color=None):
-        run.font.name = "Calibri"
+        run.font.name = "Arial"
         run.bold = bold
         run.italic = italic
         if color:
@@ -379,7 +483,7 @@ def markdown_to_docx(markdown_text: str, company_name: str) -> bytes:
             para = doc.add_heading(level=1)
             para.clear()
             run = para.add_run(stripped[2:])
-            run.font.name = "Calibri"
+            run.font.name = "Arial"
             run.font.size = Pt(18)
             run.font.color.rgb = NAVY
             run.bold = True
@@ -393,7 +497,7 @@ def markdown_to_docx(markdown_text: str, company_name: str) -> bytes:
             para = doc.add_heading(level=2)
             para.clear()
             run = para.add_run(stripped[3:])
-            run.font.name = "Calibri"
+            run.font.name = "Arial"
             run.font.size = Pt(13)
             run.font.color.rgb = GOLD
             run.bold = True
@@ -407,7 +511,7 @@ def markdown_to_docx(markdown_text: str, company_name: str) -> bytes:
             para = doc.add_heading(level=3)
             para.clear()
             run = para.add_run(stripped[4:])
-            run.font.name = "Calibri"
+            run.font.name = "Arial"
             run.font.size = Pt(11)
             run.font.color.rgb = NAVY
             run.bold = True
@@ -471,9 +575,184 @@ def markdown_to_docx(markdown_text: str, company_name: str) -> bytes:
         para.paragraph_format.space_after = Pt(5)
         i += 1
 
+    # Watermark footer for standard tier
+    if watermark:
+        para = doc.add_paragraph()
+        para.paragraph_format.space_before = Pt(24)
+        para.paragraph_format.space_after  = Pt(0)
+        from docx.oxml.ns import qn as _qn
+        from docx.oxml import OxmlElement as _OE
+        pPr = para._p.get_or_add_pPr()
+        pBdr = _OE("w:pBdr")
+        top = _OE("w:top")
+        top.set(_qn("w:val"), "single")
+        top.set(_qn("w:sz"), "4")
+        top.set(_qn("w:space"), "1")
+        top.set(_qn("w:color"), "AAAAAA")
+        pBdr.append(top)
+        pPr.append(pBdr)
+        run = para.add_run(watermark)
+        run.font.name = "Arial"
+        run.font.size = Pt(8)
+        run.font.color.rgb = RGBColor(0xAA, 0xAA, 0xAA)
+        run.italic = True
+        para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+
     buf = io.BytesIO()
     doc.save(buf)
     return buf.getvalue()
+
+
+# ---------------------------------------------------------------------------
+# Tier & sidebar state initialization
+# ---------------------------------------------------------------------------
+sys.path.insert(0, str(BASE_DIR / "src"))
+from tier import (  # noqa: E402
+    check_premium_password,
+    is_source_locked,
+    STANDARD_BRIEF_LIMIT,
+    WATERMARK_TEXT,
+)
+
+if "tier" not in st.session_state:
+    st.session_state["tier"] = "standard"
+if "brief_count" not in st.session_state:
+    st.session_state["brief_count"] = 0
+
+
+# ---------------------------------------------------------------------------
+# Sidebar — Tier gate, Model Quality, Data Sources
+# ---------------------------------------------------------------------------
+
+with st.sidebar:
+    tier = st.session_state["tier"]
+
+    # ── Tier status ──────────────────────────────────────────────────────────
+    st.markdown('<div class="section-label">Pricing Tier</div>', unsafe_allow_html=True)
+
+    if tier == "premium":
+        st.markdown(
+            '<span class="tier-badge-premium">Premium</span> — Opus unlocked · Unlimited briefs',
+            unsafe_allow_html=True,
+        )
+        if st.button("Downgrade to Standard", key="sb_downgrade", use_container_width=True):
+            st.session_state["tier"] = "standard"
+            st.session_state["brief_count"] = 0
+            st.rerun()
+    else:
+        briefs_used = st.session_state["brief_count"]
+        briefs_left = max(0, STANDARD_BRIEF_LIMIT - briefs_used)
+        st.markdown(
+            f'<span class="tier-badge-standard">Standard</span> '
+            f'— {briefs_left}/{STANDARD_BRIEF_LIMIT} briefs remaining',
+            unsafe_allow_html=True,
+        )
+        st.markdown("<br>", unsafe_allow_html=True)
+        with st.expander("Unlock Premium", expanded=False):
+            pw_input = st.text_input(
+                "Password",
+                type="password",
+                placeholder="Enter premium password",
+                key="sb_pw_input",
+            )
+            if st.button("Unlock", key="sb_unlock_btn", use_container_width=True):
+                if check_premium_password(pw_input):
+                    st.session_state["tier"] = "premium"
+                    st.session_state["brief_count"] = 0
+                    st.rerun()
+                else:
+                    st.error("Incorrect password.")
+
+    st.markdown(
+        '<div style="border-top:1px solid #2a2d35;margin:0.85rem 0 0.75rem 0;"></div>',
+        unsafe_allow_html=True,
+    )
+
+    # ── Model Quality ─────────────────────────────────────────────────────────
+    st.markdown('<div class="section-label">Model Quality</div>', unsafe_allow_html=True)
+
+    model_options = [
+        "Standard — Sonnet (~$0.20/brief)",
+        "Premium — Opus (~$3–5/brief)",
+    ]
+    if tier == "standard":
+        st.markdown(
+            '<span class="lock-note">Standard tier: Sonnet only. Upgrade to unlock Opus.</span>',
+            unsafe_allow_html=True,
+        )
+        st.session_state["sb_model_mode"] = "standard"
+        model_selection = st.radio(
+            "Model",
+            options=model_options[:1],
+            index=0,
+            key="sb_model_radio_std",
+            label_visibility="collapsed",
+        )
+    else:
+        model_selection = st.radio(
+            "Model",
+            options=model_options,
+            index=0,
+            key="sb_model_radio_prem",
+            label_visibility="collapsed",
+        )
+        st.session_state["sb_model_mode"] = (
+            "premium" if "Opus" in model_selection else "standard"
+        )
+
+    model_mode = st.session_state.get("sb_model_mode", "standard")
+
+    st.markdown(
+        '<div style="border-top:1px solid #2a2d35;margin:0.85rem 0 0.75rem 0;"></div>',
+        unsafe_allow_html=True,
+    )
+
+    # ── Data Sources ──────────────────────────────────────────────────────────
+    st.markdown('<div class="section-label">Data Sources</div>', unsafe_allow_html=True)
+
+    _ds_defs = [
+        ("sec_edgar",      "SEC EDGAR",                    False),
+        ("yahoo_finance",  "Yahoo Finance",                False),
+        ("bls",            "BLS Labor Data",               False),
+        ("damodaran",      "Damodaran Industry Multiples", True),   # premium only
+        ("naver_finance",  "Naver Finance (Korean/Asian)", True),   # premium only
+        ("news",           "News Sweep (accredited only)", False),
+    ]
+
+    selected_sources: list[str] = []
+    for src_key, src_label, premium_only in _ds_defs:
+        locked = premium_only and tier == "standard"
+        display_label = f"{src_label} 🔒" if locked else src_label
+        cb_val = st.checkbox(
+            display_label,
+            value=(not locked),   # on by default unless locked
+            disabled=locked,
+            key=f"ds_{src_key}",
+        )
+        if locked:
+            st.markdown('<span class="lock-note">Premium only</span>', unsafe_allow_html=True)
+        if cb_val and not locked:
+            selected_sources.append(src_key)
+
+    # Persist selected_sources to session state for access in generation blocks
+    st.session_state["_selected_sources"] = selected_sources
+
+    st.markdown(
+        '<div style="border-top:1px solid #2a2d35;margin:0.85rem 0 0.75rem 0;"></div>',
+        unsafe_allow_html=True,
+    )
+
+    # ── Session stats ─────────────────────────────────────────────────────────
+    st.markdown('<div class="section-label">Session</div>', unsafe_allow_html=True)
+    bc = st.session_state["brief_count"]
+    tier_label = "Premium" if tier == "premium" else "Standard"
+    st.markdown(
+        f'<p style="color:#6b7090;font-size:0.78rem;margin:0;">'
+        f'Briefs generated: <strong style="color:#8b8fa8;">{bc}</strong><br>'
+        f'Tier: <strong style="color:#8b8fa8;">{tier_label}</strong>'
+        f'</p>',
+        unsafe_allow_html=True,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -507,7 +786,7 @@ def run_async_in_thread(coro, result_queue: queue.Queue):
 # ---------------------------------------------------------------------------
 def render_output_block(result_key: str, inputs_key: str, error_key: str,
                         generating_key: str, label: str, file_suffix: str,
-                        include_lbo: bool = False):
+                        include_lbo: bool = False, docx_watermark: str = ""):
     """Render the result/error/empty state for a generation module.
 
     include_lbo: when True and a result exists, generate and surface an LBO
@@ -565,7 +844,7 @@ def render_output_block(result_key: str, inputs_key: str, error_key: str,
                 key=f"{result_key}_dl_md",
             )
         with dl_docx_col:
-            docx_bytes = markdown_to_docx(output_text, company)
+            docx_bytes = markdown_to_docx(output_text, company, watermark=docx_watermark)
             st.download_button(
                 label="Download as Word",
                 data=docx_bytes,
@@ -737,34 +1016,47 @@ with tab1:
     with col_out:
         # Validation & trigger
         if b_generate:
-            missing = []
-            if not b_company.strip():
-                missing.append("Company name")
-            if not b_description.strip():
-                missing.append("Company description")
-            if not b_industry.strip():
-                missing.append("Industry vertical")
-            if not selected_modules:
-                missing.append("at least one section")
-
-            if missing:
-                st.error(f"Please fill in / select: {', '.join(missing)}")
+            # Standard tier brief limit check
+            _cur_tier = st.session_state.get("tier", "standard")
+            _brief_cnt = st.session_state.get("brief_count", 0)
+            if _cur_tier == "standard" and _brief_cnt >= STANDARD_BRIEF_LIMIT:
+                st.error(
+                    f"Standard tier limit reached ({STANDARD_BRIEF_LIMIT} briefs/session). "
+                    "Unlock Premium in the sidebar for unlimited briefs."
+                )
             else:
-                style_ref = extract_text_from_upload(b_upload) if b_upload else ""
-                st.session_state["b_generating"] = True
-                st.session_state["b_result"] = None
-                st.session_state["b_error"] = None
-                st.session_state["b_inputs"] = {
-                    "company_name": b_company.strip(),
-                    "description": b_description.strip(),
-                    "industry": b_industry.strip(),
-                    "ev_range": b_ev_range,
-                    "context_notes": b_notes.strip(),
-                    "modules": selected_modules,
-                    "style_reference": style_ref,
-                    "include_lbo": b_include_lbo,
-                }
-                st.rerun()
+                missing = []
+                if not b_company.strip():
+                    missing.append("Company name")
+                if not b_description.strip():
+                    missing.append("Company description")
+                if not b_industry.strip():
+                    missing.append("Industry vertical")
+                if not selected_modules:
+                    missing.append("at least one section")
+
+                if missing:
+                    st.error(f"Please fill in / select: {', '.join(missing)}")
+                else:
+                    style_ref = extract_text_from_upload(b_upload) if b_upload else ""
+                    st.session_state["b_generating"] = True
+                    st.session_state["b_result"] = None
+                    st.session_state["b_error"] = None
+                    st.session_state["b_inputs"] = {
+                        "company_name": b_company.strip(),
+                        "description": b_description.strip(),
+                        "industry": b_industry.strip(),
+                        "ev_range": b_ev_range,
+                        "context_notes": b_notes.strip(),
+                        "modules": selected_modules,
+                        "style_reference": style_ref,
+                        "include_lbo": b_include_lbo,
+                        "data_sources": st.session_state.get(
+                            "_selected_sources", ["sec_edgar", "yahoo_finance", "bls", "news"]
+                        ),
+                        "model_mode": st.session_state.get("sb_model_mode", "standard"),
+                    }
+                    st.rerun()
 
         # Active generation
         if st.session_state.get("b_generating") and not st.session_state.get("b_result"):
@@ -799,6 +1091,8 @@ with tab1:
                             context_notes=inputs["context_notes"],
                             modules=inputs.get("modules"),
                             style_reference=inputs.get("style_reference", ""),
+                            data_sources=inputs.get("data_sources"),
+                            model_mode=inputs.get("model_mode", "standard"),
                         ),
                         result_q,
                     ),
@@ -814,6 +1108,7 @@ with tab1:
                     st.session_state["b_result"] = brief_text
                     st.session_state["b_result_path"] = payload
                     st.session_state["b_generating"] = False
+                    st.session_state["brief_count"] = st.session_state.get("brief_count", 0) + 1
                     status_box.update(label="Brief ready.", state="complete", expanded=False)
                     st.rerun()
                 else:
@@ -822,6 +1117,11 @@ with tab1:
                     status_box.update(label="Generation failed.", state="error", expanded=False)
                     st.rerun()
 
+        _b_watermark = (
+            WATERMARK_TEXT
+            if st.session_state.get("tier", "standard") == "standard"
+            else ""
+        )
         render_output_block(
             result_key="b_result",
             inputs_key="b_inputs",
@@ -830,6 +1130,7 @@ with tab1:
             label="brief",
             file_suffix="ops_brief",
             include_lbo=st.session_state.get("b_inputs", {}).get("include_lbo", False),
+            docx_watermark=_b_watermark,
         )
 
 
