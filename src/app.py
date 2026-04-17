@@ -1144,6 +1144,33 @@ with tab1:
             index=1,
             key="b_ev_range",
         )
+        b_deal_type = st.selectbox(
+            "Deal type",
+            options=[
+                "Standard (Mfg / Services / Retail)",
+                "Financial Services / Fintech",
+                "Real Estate",
+                "Technology / SaaS",
+            ],
+            index=0,
+            key="b_deal_type",
+            help=(
+                "Sets which deal-type specific modules appear in the checklist below. "
+                "Financial Services adds Credit Metrics; Technology / SaaS adds SaaS Metrics."
+            ),
+        )
+        b_brief_style = st.radio(
+            "Brief style",
+            options=["Long Form (~10,000 words)", "Bullet (~5,000 words)"],
+            index=0,
+            key="b_brief_style",
+            horizontal=True,
+            help=(
+                "Long Form: full prose sections with detailed analysis. "
+                "Bullet: concise bullets-only format, ~5,000 words max."
+            ),
+        )
+
         b_notes = st.text_area(
             "Context notes (optional)",
             placeholder=(
@@ -1175,6 +1202,54 @@ with tab1:
             checked = col.checkbox(label_text, value=True, key=f"b_mod_{key}")
             if checked:
                 selected_modules.append(key)
+
+        # ── Optional modules (off by default) ────────────────────────────────
+        st.markdown(
+            '<div style="border-top:1px solid #2a2d35;margin:0.75rem 0 0.5rem 0;"></div>',
+            unsafe_allow_html=True,
+        )
+        st.markdown('<div class="section-label">Optional Modules</div>', unsafe_allow_html=True)
+
+        _opt_modules = [
+            ("transaction_structure",    "Transaction Structure Analysis"),
+            ("change_my_view",           "What Would Change My View"),
+            ("investment_recommendation","Investment Recommendation"),
+        ]
+
+        # Synergy Analysis only when context notes suggest M&A / add-on scenario
+        _synergy_keywords = [
+            "acquisition", "acquire", "merger", "add-on", "addon", "add on",
+            "bolt-on", "bolton", "roll-up", "rollup",
+        ]
+        _show_synergy = bool(b_notes) and any(
+            kw in b_notes.lower() for kw in _synergy_keywords
+        )
+        if _show_synergy:
+            _opt_modules.insert(2, ("synergy_analysis", "Synergy Analysis (M&A / add-on)"))
+
+        for key, label_text in _opt_modules:
+            if st.checkbox(label_text, value=False, key=f"b_mod_{key}"):
+                selected_modules.append(key)
+
+        # Deal-type specific modules
+        if "Financial Services" in b_deal_type:
+            if st.checkbox(
+                "Credit & Financial Metrics",
+                value=False,
+                key="b_mod_credit_metrics",
+                help="Loss curves, NIM, funding stack, regulatory trajectory, vintage analysis.",
+            ):
+                selected_modules.append("credit_metrics")
+        elif "Technology" in b_deal_type or "SaaS" in b_deal_type:
+            if st.checkbox(
+                "SaaS & Technology Metrics",
+                value=False,
+                key="b_mod_saas_metrics",
+                help="ARR, NRR, CAC/LTV, churn analysis, technology moat assessment.",
+            ):
+                selected_modules.append("saas_metrics")
+        elif "Real Estate" in b_deal_type:
+            st.caption("Real Estate modules — coming soon")
 
         # ── Add-ons ──────────────────────────────────────────────────────────
         st.markdown(
@@ -1248,6 +1323,7 @@ with tab1:
                         "description": b_description.strip(),
                         "industry": b_industry.strip(),
                         "ev_range": b_ev_range,
+                        "deal_type": b_deal_type,
                         "context_notes": b_notes.strip(),
                         "modules": selected_modules,
                         "style_reference": style_ref,
@@ -1256,6 +1332,7 @@ with tab1:
                             "_selected_sources", ["sec_edgar", "yahoo_finance", "bls", "news"]
                         ),
                         "model_mode": st.session_state.get("sb_model_mode", "standard"),
+                        "brief_style": "bullet" if "Bullet" in b_brief_style else "long_form",
                     }
                     st.rerun()
 
@@ -1264,17 +1341,22 @@ with tab1:
             inputs = st.session_state["b_inputs"]
             from generate_brief import generate_brief  # noqa: E402
 
-            steps = [
-                "Web research and data pulls (SEC EDGAR, BLS, news)…",
-                "Generating executive summary…",
-                "Assessing operational risk flags…",
-                "Building comps and benchmarks…",
-                "Evaluating IT systems maturity…",
-                "Mapping value creation levers…",
-                "Drafting 100-day plan…",
-                "Compiling diligence questions…",
-                "Assembling final brief…",
-            ]
+            _active_mods = inputs.get("modules", [])
+            steps = ["Web research and data pulls (SEC EDGAR, BLS, news)…"]
+            if "exec_summary"        in _active_mods: steps.append("Generating executive summary…")
+            if "risk_flags"          in _active_mods: steps.append("Assessing operational risk flags…")
+            if "comps_benchmarks"    in _active_mods: steps.append("Building comps and benchmarks…")
+            if "it_systems"          in _active_mods: steps.append("Evaluating IT systems maturity…")
+            if "value_creation"      in _active_mods: steps.append("Mapping value creation levers…")
+            if "100_day_plan"        in _active_mods: steps.append("Drafting 100-day plan…")
+            if "diligence_questions" in _active_mods: steps.append("Compiling diligence questions…")
+            if "transaction_structure"    in _active_mods: steps.append("Analyzing transaction structure…")
+            if "synergy_analysis"         in _active_mods: steps.append("Running synergy analysis…")
+            if "change_my_view"           in _active_mods: steps.append("Writing What Would Change My View…")
+            if "investment_recommendation" in _active_mods: steps.append("Drafting investment recommendation…")
+            if "credit_metrics"           in _active_mods: steps.append("Assessing credit & financial metrics…")
+            if "saas_metrics"             in _active_mods: steps.append("Evaluating SaaS & technology metrics…")
+            steps.append("Assembling final brief…")
 
             with st.status("Generating brief — this takes 1–2 minutes…", expanded=True) as status_box:
                 for s in steps:
@@ -1294,6 +1376,8 @@ with tab1:
                             style_reference=inputs.get("style_reference", ""),
                             data_sources=inputs.get("data_sources"),
                             model_mode=inputs.get("model_mode", "standard"),
+                            deal_type=inputs.get("deal_type", "Standard (Mfg / Services / Retail)"),
+                            brief_style=inputs.get("brief_style", "long_form"),
                         ),
                         result_q,
                     ),

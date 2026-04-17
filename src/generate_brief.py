@@ -45,6 +45,7 @@ from tier import STANDARD_MODEL, PREMIUM_MODEL, get_model_for_section, get_resea
 BASE_DIR = Path(__file__).parent.parent
 PROMPTS_DIR = BASE_DIR / "prompts"
 SECTION_PROMPTS_DIR = PROMPTS_DIR / "section_prompts"
+SECTION_PROMPTS_BULLET_DIR = SECTION_PROMPTS_DIR / "bullet"
 TEMPLATES_DIR = BASE_DIR / "templates"
 OUTPUT_DIR = BASE_DIR / "output"
 
@@ -60,8 +61,11 @@ def slugify(name: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
 
 
-def load_template(name: str, section: bool = False) -> str:
-    directory = SECTION_PROMPTS_DIR if section else PROMPTS_DIR
+def load_template(name: str, section: bool = False, section_dir: Path | None = None) -> str:
+    if section:
+        directory = section_dir if section_dir is not None else SECTION_PROMPTS_DIR
+    else:
+        directory = PROMPTS_DIR
     return (directory / f"{name}.md").read_text()
 
 
@@ -170,6 +174,7 @@ async def generate_section(
     context: dict,
     model: str = STANDARD_MODEL,
     max_retries: int = 6,
+    section_dir: Path | None = None,
 ) -> str:
     """
     Generate a single section of the brief via a single Claude call.
@@ -178,7 +183,7 @@ async def generate_section(
     model_tag = " [Opus]" if model == PREMIUM_MODEL else ""
     print(f"  [generate] Writing: {section_name}{model_tag}...")
 
-    section_template = load_template(section_name, section=True)
+    section_template = load_template(section_name, section=True, section_dir=section_dir)
 
     class SafeDict(dict):
         def __missing__(self, key):
@@ -219,14 +224,33 @@ ALL_MODULES = [
     "diligence_questions",
 ]
 
-SECTION_HEADERS = {
-    "exec_summary":        "## 1. Executive Summary",
-    "risk_flags":          "## 2. Operational Risk Flags",
-    "comps_benchmarks":    "## 3. Comparable Companies & Benchmarks",
-    "it_systems":          "## 4. IT & Systems Maturity",
-    "value_creation":      "## 5. Value Creation Opportunities",
-    "100_day_plan":        "## 6. 100-Day Plan Outline Starter",
-    "diligence_questions": "## 7. Key Diligence Questions",
+# Optional modules — off by default, appended after core sections when selected
+OPTIONAL_MODULES = [
+    "transaction_structure",
+    "change_my_view",
+    "synergy_analysis",
+    "investment_recommendation",
+    "credit_metrics",
+    "saas_metrics",
+]
+
+CORE_SECTION_TITLES = {
+    "exec_summary":        "Executive Summary",
+    "risk_flags":          "Operational Risk Flags",
+    "comps_benchmarks":    "Comparable Companies & Benchmarks",
+    "it_systems":          "IT & Systems Maturity",
+    "value_creation":      "Value Creation Opportunities",
+    "100_day_plan":        "100-Day Plan Outline Starter",
+    "diligence_questions": "Key Diligence Questions",
+}
+
+OPTIONAL_SECTION_TITLES = {
+    "transaction_structure":    "Transaction Structure Analysis",
+    "change_my_view":           "What Would Change My View",
+    "synergy_analysis":         "Synergy Analysis",
+    "investment_recommendation":"Investment Recommendation",
+    "credit_metrics":           "Credit & Financial Metrics",
+    "saas_metrics":             "SaaS & Technology Metrics",
 }
 
 
@@ -240,18 +264,27 @@ async def generate_brief(
     style_reference: str = "",
     data_sources: list[str] | None = None,
     model_mode: str = "standard",
+    deal_type: str = "Standard (Mfg / Services / Retail)",
+    brief_style: str = "long_form",
 ) -> str:
     """
-    modules:      list of section keys to generate (default: all).
+    modules:      list of section keys to generate (default: all core modules).
+                  Optional module keys (transaction_structure, change_my_view, etc.)
+                  are only generated when explicitly included.
     style_reference: extracted text from an uploaded document to mirror.
     data_sources: list of enabled data source keys, e.g. ["sec_edgar", "bls", "news"].
                   Defaults to all non-premium sources.
     model_mode:   "standard" (Sonnet for all) or "premium" (Opus for key sections).
+    deal_type:    deal type label (e.g. "Financial Services / Fintech", "Technology / SaaS").
+    brief_style:  "bullet" (concise ~5k words) or "long_form" (full ~10k words).
     """
     if modules is None:
         modules = ALL_MODULES
     if data_sources is None:
         data_sources = DEFAULT_DATA_SOURCES
+
+    # Resolve prompt directory based on style
+    _section_dir = SECTION_PROMPTS_BULLET_DIR if brief_style == "bullet" else SECTION_PROMPTS_DIR
 
     ds = set(data_sources)
 
@@ -262,6 +295,7 @@ async def generate_brief(
     client = anthropic.AsyncAnthropic(api_key=api_key)
     research_model = get_research_model(model_mode)
     print(f"\n[Mode] {'Premium (Opus for key sections)' if model_mode == 'premium' else 'Standard (Sonnet)'}")
+    print(f"[Style] {brief_style}")
     print(f"[Sources] {sorted(ds)}")
 
     # -----------------------------------------------------------------------
@@ -269,7 +303,7 @@ async def generate_brief(
     # -----------------------------------------------------------------------
     print("\n[Phase 1] Web research, data pulls, and template loading in parallel...")
 
-    async def load_static_templates() -> tuple[str, str]:
+    async def load_static_templates() -> str:
         base_system = load_template("system_prompt")
         if style_reference.strip():
             style_addendum = (
@@ -279,11 +313,8 @@ async def generate_brief(
                 "when generating each section. Adapt content but match the voice and layout:\n\n"
                 f"{style_reference[:6000]}"
             )
-            system_prompt = base_system + style_addendum
-        else:
-            system_prompt = base_system
-        brief_template = (TEMPLATES_DIR / "brief_template.md").read_text()
-        return system_prompt, brief_template
+            return base_system + style_addendum
+        return base_system
 
     async def fetch_real_data():
         """Conditionally fetch enabled data sources concurrently."""
@@ -309,7 +340,7 @@ async def generate_brief(
         results_list = await asyncio.gather(*tasks.values(), return_exceptions=True)
         return dict(zip(keys, results_list))
 
-    (research_text, sources), (system_prompt, brief_template), data_results = (
+    (research_text, sources), system_prompt, data_results = (
         await asyncio.gather(
             run_research_agent(client, company_name, description, industry, model=research_model),
             load_static_templates(),
@@ -400,6 +431,7 @@ async def generate_brief(
         "description": description,
         "industry": industry,
         "ev_range": ev_range,
+        "deal_type": deal_type,
         "context_notes": context_notes or "None provided.",
         "research_summary": research_summary,
         # Data source context for Section 3 (comps & benchmarks)
@@ -413,7 +445,14 @@ async def generate_brief(
             print(f"  [generate] Skipping (disabled): {section_key}")
             return "_Section excluded from this brief._"
         section_model = get_model_for_section(section_key, model_mode)
-        return await generate_section(client, system_prompt, section_key, ctx, model=section_model)
+        # Use bullet dir only if prompt file exists there; otherwise fall back to long_form
+        resolved_dir = _section_dir
+        if brief_style == "bullet" and not (_section_dir / f"{section_key}.md").exists():
+            resolved_dir = SECTION_PROMPTS_DIR
+        return await generate_section(
+            client, system_prompt, section_key, ctx,
+            model=section_model, section_dir=resolved_dir,
+        )
 
     # -----------------------------------------------------------------------
     # Phase 2: Sections 1–5 sequentially
@@ -426,9 +465,9 @@ async def generate_brief(
     value_creation   = await gen("value_creation",   base_context)
 
     # -----------------------------------------------------------------------
-    # Phase 3: Sections 6–7 (depend on risk_flags + value_creation)
+    # Phase 3: Sections 6–7 + optional sections that need Phase 2 outputs
     # -----------------------------------------------------------------------
-    print("\n[Phase 3] Generating sections 6–7...")
+    print("\n[Phase 3] Generating sections 6–7 and optional sections...")
 
     extended_context = {
         **base_context,
@@ -438,6 +477,30 @@ async def generate_brief(
 
     day_plan            = await gen("100_day_plan",        extended_context)
     diligence_questions = await gen("diligence_questions", extended_context)
+
+    # Optional sections that depend only on base_context
+    transaction_structure = await gen("transaction_structure", base_context)
+    synergy_analysis      = await gen("synergy_analysis",      base_context)
+    credit_metrics        = await gen("credit_metrics",        base_context)
+    saas_metrics          = await gen("saas_metrics",          base_context)
+
+    # change_my_view needs exec_summary + risk_flags + value_creation
+    cmv_context = {
+        **base_context,
+        "exec_summary_text":      exec_summary,
+        "risk_flags_summary":     risk_flags,
+        "value_creation_summary": value_creation,
+    }
+    change_my_view = await gen("change_my_view", cmv_context)
+
+    # investment_recommendation needs all key prior outputs
+    ir_context = {
+        **base_context,
+        "exec_summary_text":      exec_summary,
+        "risk_flags_summary":     risk_flags,
+        "value_creation_summary": value_creation,
+    }
+    investment_recommendation = await gen("investment_recommendation", ir_context)
 
     # -----------------------------------------------------------------------
     # Phase 4: Assemble and write output
@@ -465,20 +528,72 @@ async def generate_brief(
 
     sources_md = "\n".join(source_lines)
 
-    brief = brief_template.format_map({
-        "company_name": company_name,
-        "date": today,
-        "industry": industry,
-        "ev_range": ev_range,
-        "exec_summary": exec_summary,
-        "risk_flags": risk_flags,
-        "comps_benchmarks": comps_benchmarks,
-        "it_systems": it_systems,
-        "value_creation": value_creation,
-        "100_day_plan": day_plan,
-        "diligence_questions": diligence_questions,
-        "data_sources": sources_md,
-    })
+    _EXCLUDED = "_Section excluded from this brief._"
+
+    # Build brief programmatically so optional sections get correct numbering
+    brief_lines = [
+        f"# PE Ops Diligence Brief: {company_name}",
+        "",
+        f"**Generated:** {today}",
+        f"**Industry:** {industry}",
+        f"**EV Range:** {ev_range}",
+        f"**Deal Type:** {deal_type}",
+        "**Brief Version:** 2.1 (Pre-Diligence / Desk Research + Real Data)",
+        f"**Brief Style:** {'Bullet (~5,000 words)' if brief_style == 'bullet' else 'Long Form (~10,000 words)'}",
+        "",
+        "> *This brief combines publicly available data (SEC EDGAR, BLS, news) with LLM analysis. "
+        "It is intended to inform diligence priorities and management meeting preparation — not to "
+        "replace direct diligence. Public comp benchmarks skew larger than typical middle-market "
+        "targets; treat as directional context.*",
+        "",
+        "---",
+        "",
+    ]
+
+    section_num = 1
+
+    core_results = [
+        ("exec_summary",        exec_summary),
+        ("risk_flags",          risk_flags),
+        ("comps_benchmarks",    comps_benchmarks),
+        ("it_systems",          it_systems),
+        ("value_creation",      value_creation),
+        ("100_day_plan",        day_plan),
+        ("diligence_questions", diligence_questions),
+    ]
+
+    for key, content in core_results:
+        if key in modules and content != _EXCLUDED:
+            title = CORE_SECTION_TITLES[key]
+            brief_lines += [f"## {section_num}. {title}", "", content, "", "---", ""]
+            section_num += 1
+
+    optional_results = [
+        ("transaction_structure",    transaction_structure),
+        ("change_my_view",           change_my_view),
+        ("synergy_analysis",         synergy_analysis),
+        ("investment_recommendation",investment_recommendation),
+        ("credit_metrics",           credit_metrics),
+        ("saas_metrics",             saas_metrics),
+    ]
+
+    for key, content in optional_results:
+        if key in modules and content != _EXCLUDED:
+            title = OPTIONAL_SECTION_TITLES[key]
+            brief_lines += [f"## {section_num}. {title}", "", content, "", "---", ""]
+            section_num += 1
+
+    brief_lines += [
+        f"## {section_num}. Data Sources Consulted",
+        "",
+        sources_md,
+        "",
+        "---",
+        "",
+        f"*Generated by PE Ops Due Diligence Brief Generator v2.1 | {today}*",
+    ]
+
+    brief = "\n".join(brief_lines)
 
     OUTPUT_DIR.mkdir(exist_ok=True)
     output_path = OUTPUT_DIR / f"{slugify(company_name)}_ops_brief_{today}.md"
@@ -530,6 +645,7 @@ Example:
         industry=args.industry,
         ev_range=args.ev_range,
         context_notes=args.context_notes,
+        deal_type="Standard (Mfg / Services / Retail)",
     ))
 
 
