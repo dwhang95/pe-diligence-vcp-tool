@@ -1214,6 +1214,7 @@ with tab1:
             ("transaction_structure",    "Transaction Structure Analysis"),
             ("change_my_view",           "What Would Change My View"),
             ("investment_recommendation","Investment Recommendation"),
+            ("functional_scorecards",    "Functional Scorecards"),
         ]
 
         # Synergy Analysis only when context notes suggest M&A / add-on scenario
@@ -1356,6 +1357,7 @@ with tab1:
             if "investment_recommendation" in _active_mods: steps.append("Drafting investment recommendation…")
             if "credit_metrics"           in _active_mods: steps.append("Assessing credit & financial metrics…")
             if "saas_metrics"             in _active_mods: steps.append("Evaluating SaaS & technology metrics…")
+            if "functional_scorecards"    in _active_mods: steps.append("Building functional scorecards (Ops / IT / Commercial / Talent)…")
             steps.append("Assembling final brief…")
 
             with st.status("Generating brief — this takes 1–2 minutes…", expanded=True) as status_box:
