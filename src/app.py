@@ -1214,7 +1214,6 @@ with tab1:
             ("transaction_structure",    "Transaction Structure Analysis"),
             ("change_my_view",           "What Would Change My View"),
             ("investment_recommendation","Investment Recommendation"),
-            ("functional_scorecards",    "Functional Scorecards"),
         ]
 
         # Synergy Analysis only when context notes suggest M&A / add-on scenario
@@ -1357,7 +1356,6 @@ with tab1:
             if "investment_recommendation" in _active_mods: steps.append("Drafting investment recommendation…")
             if "credit_metrics"           in _active_mods: steps.append("Assessing credit & financial metrics…")
             if "saas_metrics"             in _active_mods: steps.append("Evaluating SaaS & technology metrics…")
-            if "functional_scorecards"    in _active_mods: steps.append("Building functional scorecards (Ops / IT / Commercial / Talent)…")
             steps.append("Assembling final brief…")
 
             with st.status("Generating brief — this takes 1–2 minutes…", expanded=True) as status_box:
@@ -1515,6 +1513,24 @@ with tab2:
             key="v_challenges",
         )
 
+        # ── Optional modules ─────────────────────────────────────────────────
+        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown(
+            '<div style="border-top:1px solid #2a2d35;margin:0.75rem 0 0.5rem 0;"></div>',
+            unsafe_allow_html=True,
+        )
+        st.markdown('<div class="section-label">Optional Modules</div>', unsafe_allow_html=True)
+        v_include_scorecards = st.checkbox(
+            "Functional Scorecards (Ops / IT / Commercial / Talent)",
+            value=False,
+            key="v_mod_functional_scorecards",
+            help=(
+                "Generates four R/Y/G maturity scorecards (15 dimensions each) covering "
+                "Operations, IT & Systems, Commercial, and Talent/HR. "
+                "Adds ~30–60 seconds to generation time."
+            ),
+        )
+
         # ── Document upload ──────────────────────────────────────────────────
         st.markdown("<br>", unsafe_allow_html=True)
         st.markdown('<div class="section-label">Style Reference (optional)</div>', unsafe_allow_html=True)
@@ -1573,6 +1589,7 @@ with tab2:
                     "hold_period": int(v_hold),
                     "target_ebitda": float(v_target_ebitda),
                     "style_reference": style_ref,
+                    "include_scorecards": v_include_scorecards,
                 }
                 st.rerun()
 
@@ -1589,8 +1606,10 @@ with tab2:
                 "Designing KPI dashboard…",
                 "Writing 100-day sprint plan…",
                 "Identifying organizational capability gaps…",
-                "Assembling final VCP…",
             ]
+            if inputs.get("include_scorecards"):
+                steps.append("Building functional scorecards (Ops / IT / Commercial / Talent)…")
+            steps.append("Assembling final VCP…")
 
             with st.status("Generating VCP — typically 30–60 seconds…", expanded=True) as status_box:
                 for s in steps:
@@ -1611,6 +1630,7 @@ with tab2:
                             hold_period=inputs["hold_period"],
                             target_ebitda=inputs["target_ebitda"],
                             style_reference=inputs.get("style_reference", ""),
+                            include_scorecards=inputs.get("include_scorecards", False),
                         ),
                         result_q,
                     ),

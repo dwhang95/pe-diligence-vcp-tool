@@ -232,7 +232,6 @@ OPTIONAL_MODULES = [
     "investment_recommendation",
     "credit_metrics",
     "saas_metrics",
-    "functional_scorecards",
 ]
 
 CORE_SECTION_TITLES = {
@@ -252,7 +251,6 @@ OPTIONAL_SECTION_TITLES = {
     "investment_recommendation":"Investment Recommendation",
     "credit_metrics":           "Credit & Financial Metrics",
     "saas_metrics":             "SaaS & Technology Metrics",
-    "functional_scorecards":    "Functional Scorecards",
 }
 
 
@@ -485,7 +483,6 @@ async def generate_brief(
     synergy_analysis      = await gen("synergy_analysis",      base_context)
     credit_metrics        = await gen("credit_metrics",        base_context)
     saas_metrics          = await gen("saas_metrics",          base_context)
-    functional_scorecards = await gen("functional_scorecards", base_context)
 
     # change_my_view needs exec_summary + risk_flags + value_creation
     cmv_context = {
@@ -578,7 +575,6 @@ async def generate_brief(
         ("investment_recommendation",investment_recommendation),
         ("credit_metrics",           credit_metrics),
         ("saas_metrics",             saas_metrics),
-        ("functional_scorecards",    functional_scorecards),
     ]
 
     for key, content in optional_results:
