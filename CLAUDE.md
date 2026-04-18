@@ -76,18 +76,35 @@ All generated content must sound like a senior PE ops professional wrote it — 
 
 ---
 
-## Project Status
-
+## Project Status (updated 2026-04-18)
 - [x] Spec written
 - [x] Folder structure created
-- [ ] System prompt written
-- [ ] Section prompts written
-- [ ] `researcher.py` built
-- [ ] `brief_generator.py` built
-- [ ] `formatter.py` built
-- [ ] `main.py` CLI built
-- [x] End-to-end test run on a real company (CBIZ, $4.7B EV, 2026-03-20)
+- [x] System prompt written
+- [x] Section prompts written
+- [x] researcher.py / web search integrated
+- [x] generate_brief.py built (async pipeline)
+- [x] Streamlit UI built (src/app.py)
+- [x] Functional Scorecards module added (Section 8)
+- [x] Deployed to Streamlit Cloud
+- [x] End-to-end test run on real companies (CBIZ, Floor & Decor)
+- [ ] VCP Generator module (next)
+- [ ] Widus Korea/SEA market variant
 
 ---
+## Current Module Architecture (updated 2026-04-18)
+- src/app.py — Streamlit UI (two-column, dark PE theme)
+- src/generate_brief.py — async pipeline
+- prompts/section_prompts/ — one .md per section
 
-*Last updated: 2026-03-09*
+Optional modules (checkbox in UI, off by default):
+- Functional Scorecards (Ops / IT / Commercial / Talent) → Section 8
+
+When adding modules: update OPTIONAL_MODULES, OPTIONAL_SECTION_TITLES, 
+and optional_results in generate_brief.py. Never hardcode section numbers.
+
+## Do Not
+- Change gold accent (#c9a84c) without flagging
+- Add sync calls inside the async pipeline
+- Commit without local Streamlit test first
+
+*Last updated: 2026-04-18*
