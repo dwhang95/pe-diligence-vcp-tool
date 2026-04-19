@@ -7,6 +7,7 @@ Generate the Executive Summary section for the PE ops diligence brief.
 - Description: {description}
 - Industry: {industry}
 - EV range: {ev_range}
+- Deal type: {deal_type}
 - Context notes: {context_notes}
 - Research findings: {research_summary}
 

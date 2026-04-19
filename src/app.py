@@ -147,6 +147,15 @@ _CSS_TEMPLATE = """
   pre, code, kbd, samp, .stCodeBlock * {
     font-family: 'Courier New', Courier, monospace !important;
   }
+  /* ── Restore Material Symbols font for Streamlit icon elements ── */
+  /* Without this the Arial catch-all turns icon ligatures into literal text  */
+  /* e.g. "keyboard_arrow_right", "upload" show as plain strings              */
+  [data-testid="stIconMaterial"],
+  span[translate="no"] {
+    font-family: 'Material Symbols Rounded', 'Material Icons', sans-serif !important;
+    font-size: 1.2rem !important;
+    line-height: 1 !important;
+  }
 
   /* ── Global ── */
   html, body,
@@ -248,19 +257,23 @@ _CSS_TEMPLATE = """
   }
 
   /* ── Primary button ── */
-  [data-testid="stButton"] > button[kind="primary"] {
-    background: __ACCENT__;
-    color: __BTN_TEXT__;
-    border: none;
-    border-radius: 5px;
-    font-weight: 700;
-    font-size: 0.9rem;
-    padding: 0.6rem 1.8rem;
-    letter-spacing: 0.02em;
-    transition: background 0.15s;
+  [data-testid="stButton"] > button[kind="primary"],
+  [data-testid="stBaseButton-primary"] {
+    background-color: #2563EB !important;
+    background: #2563EB !important;
+    color: #FFFFFF !important;
+    border: none !important;
+    border-radius: 5px !important;
+    font-weight: 700 !important;
+    font-size: 0.9rem !important;
+    padding: 0.6rem 1.8rem !important;
+    letter-spacing: 0.02em !important;
+    transition: background 0.15s !important;
   }
-  [data-testid="stButton"] > button[kind="primary"]:hover {
-    background: __ACCENT_HOVER__;
+  [data-testid="stButton"] > button[kind="primary"]:hover,
+  [data-testid="stBaseButton-primary"]:hover {
+    background-color: #1D4ED8 !important;
+    background: #1D4ED8 !important;
   }
 
   /* ── Secondary / plain buttons ── */
@@ -1223,10 +1236,10 @@ with tab1:
             placeholder="e.g. Industrial Packaging, Healthcare Services, Business Services",
             key="b_industry",
         )
-        b_ev_range = st.selectbox(
+        b_ev_range = st.text_input(
             "EV range *",
-            options=["$50–100M", "$100–250M", "$250–500M"],
-            index=1,
+            placeholder="e.g. $150M–$200M or ~$175M",
+            value="$100–250M",
             key="b_ev_range",
         )
         b_deal_type = st.selectbox(
@@ -1296,6 +1309,7 @@ with tab1:
         st.markdown('<div class="section-label">Optional Modules</div>', unsafe_allow_html=True)
 
         _opt_modules = [
+            ("functional_scorecards",    "Functional Scorecards (Ops / IT / Commercial / Talent)"),
             ("transaction_structure",    "Transaction Structure Analysis"),
             ("change_my_view",           "What Would Change My View"),
             ("investment_recommendation","Investment Recommendation"),
@@ -1446,6 +1460,7 @@ with tab1:
             if "investment_recommendation" in _active_mods: steps.append("Drafting investment recommendation…")
             if "credit_metrics"           in _active_mods: steps.append("Assessing credit & financial metrics…")
             if "saas_metrics"             in _active_mods: steps.append("Evaluating SaaS & technology metrics…")
+            if "functional_scorecards"    in _active_mods: steps.append("Building functional scorecards…")
             steps.append("Assembling final brief…")
 
             with st.status("Generating brief — this takes 1–2 minutes…", expanded=True) as status_box:
@@ -1501,6 +1516,7 @@ with tab1:
                                 if 10 < len(_content) < 200:
                                     _levers.append(_content)
                         st.session_state["vco_for_100day"] = "\n".join(_levers[:12]) or _vco_raw[:800]
+                    st.session_state["tab1_run_at"] = datetime.now().isoformat()
                     status_box.update(label="Brief ready.", state="complete", expanded=False)
                     st.rerun()
                 else:
@@ -1984,7 +2000,7 @@ with tab3:
 
         # Top Value Levers — pre-filled from Tab 1 if available
         _levers_label = "Top value levers *"
-        if "vco_for_100day" in st.session_state:
+        if "tab1_run_at" in st.session_state and "p_result" not in st.session_state:
             st.success("Pre-filled from your diligence brief")
         p_levers = st.text_area(
             _levers_label,

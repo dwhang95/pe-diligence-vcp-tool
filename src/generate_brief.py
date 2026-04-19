@@ -232,6 +232,7 @@ OPTIONAL_MODULES = [
     "investment_recommendation",
     "credit_metrics",
     "saas_metrics",
+    "functional_scorecards",
 ]
 
 CORE_SECTION_TITLES = {
@@ -251,6 +252,7 @@ OPTIONAL_SECTION_TITLES = {
     "investment_recommendation":"Investment Recommendation",
     "credit_metrics":           "Credit & Financial Metrics",
     "saas_metrics":             "SaaS & Technology Metrics",
+    "functional_scorecards":    "Functional Scorecards (Ops / IT / Commercial / Talent)",
 }
 
 
@@ -290,7 +292,7 @@ async def generate_brief(
 
     api_key = os.environ.get("ANTHROPIC_API_KEY")
     if not api_key:
-        sys.exit("Error: ANTHROPIC_API_KEY environment variable not set.")
+        raise ValueError("ANTHROPIC_API_KEY not set. Please configure your environment.")
 
     client = anthropic.AsyncAnthropic(api_key=api_key)
     research_model = get_research_model(model_mode)
@@ -426,12 +428,28 @@ async def generate_brief(
         )
         news_summary_markdown = news_trimmed.to_summary_markdown()
 
+    # Derive a human-readable classification from deal_type + industry for exec_summary prompt
+    _deal_type_lower = deal_type.lower()
+    if "saas" in _deal_type_lower or "technology" in _deal_type_lower:
+        _classification = "Tech-enabled / platform"
+    elif "financial" in _deal_type_lower or "fintech" in _deal_type_lower:
+        _classification = "Financial services / asset-light"
+    elif "real estate" in _deal_type_lower:
+        _classification = "Asset-heavy / real estate"
+    elif any(kw in industry.lower() for kw in ["manufactur", "packag", "logistics", "distribution", "chemical"]):
+        _classification = "Asset-heavy / capital-intensive"
+    elif any(kw in industry.lower() for kw in ["services", "staffing", "consult", "care", "health"]):
+        _classification = "Asset-light / people-intensive"
+    else:
+        _classification = "Hybrid"
+
     base_context = {
         "company_name": company_name,
         "description": description,
         "industry": industry,
         "ev_range": ev_range,
         "deal_type": deal_type,
+        "classification": _classification,
         "context_notes": context_notes or "None provided.",
         "research_summary": research_summary,
         # Data source context for Section 3 (comps & benchmarks)
@@ -501,6 +519,15 @@ async def generate_brief(
         "value_creation_summary": value_creation,
     }
     investment_recommendation = await gen("investment_recommendation", ir_context)
+
+    # functional_scorecards needs risk_flags + it_systems + value_creation for full context
+    fs_context = {
+        **base_context,
+        "risk_flags_summary":   risk_flags,
+        "it_systems_summary":   it_systems,
+        "vc_levers_summary":    value_creation,
+    }
+    functional_scorecards = await gen("functional_scorecards", fs_context)
 
     # -----------------------------------------------------------------------
     # Phase 4: Assemble and write output
@@ -575,6 +602,7 @@ async def generate_brief(
         ("investment_recommendation",investment_recommendation),
         ("credit_metrics",           credit_metrics),
         ("saas_metrics",             saas_metrics),
+        ("functional_scorecards",    functional_scorecards),
     ]
 
     for key, content in optional_results:

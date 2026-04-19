@@ -4,6 +4,7 @@ Generate the Operational Risk Flags section for the PE ops diligence brief.
 
 ## Input Context
 - Company: {company_name} | Industry: {industry} | EV: {ev_range}
+- Deal type: {deal_type}
 - Description: {description}
 - Research findings: {research_summary}
 

@@ -59,9 +59,9 @@ def build_100day_context(
 **Deal Type:** {deal_type}
 **Hold Period:** {hold_period_years} years
 
-**EBITDA at Entry:** ${entry_ebitda:,.0f}K
-**Target EBITDA:** ${target_ebitda:,.0f}K
-**Required EBITDA Lift:** ${ebitda_delta:,.0f}K ({ebitda_growth_pct:.1f}% growth)
+**EBITDA at Entry:** ${entry_ebitda/1000:.1f}M
+**Target EBITDA:** ${target_ebitda/1000:.1f}M
+**Required EBITDA Lift:** ${ebitda_delta/1000:.1f}M ({ebitda_growth_pct:.1f}% growth)
 
 **Investment Thesis:**
 {pe_thesis}
@@ -157,7 +157,7 @@ async def generate_100day_plan(
     """
     api_key = os.environ.get("ANTHROPIC_API_KEY")
     if not api_key:
-        sys.exit("Error: ANTHROPIC_API_KEY environment variable not set.")
+        raise ValueError("ANTHROPIC_API_KEY not set. Please configure your environment.")
 
     client = anthropic.AsyncAnthropic(api_key=api_key)
     model = PREMIUM_MODEL if model_mode == "premium" else STANDARD_MODEL
