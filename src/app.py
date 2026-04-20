@@ -157,6 +157,32 @@ _CSS_TEMPLATE = """
     line-height: 1 !important;
   }
 
+  /* ── BUG-V3: Hide sidebar collapse/expand icon text artifact ── */
+  /* The "keyboard_double_arrow_right" ligature leaks as literal text when    */
+  /* Material Symbols font is unavailable; hide the offending spans entirely. */
+  [data-testid="collapsedControl"],
+  [data-testid="collapsedControl"] span,
+  [data-testid="stSidebarCollapseButton"],
+  [data-testid="stSidebarCollapseButton"] span,
+  button[kind="headerNoPadding"],
+  button[kind="headerNoPadding"] span,
+  [data-testid="baseButton-headerNoPadding"],
+  [data-testid="baseButton-headerNoPadding"] span {
+    font-family: 'Material Symbols Rounded', 'Material Icons', sans-serif !important;
+    font-size: 1.2rem !important;
+    line-height: 1 !important;
+    visibility: visible !important;
+  }
+  /* Fallback: if font still not resolved, suppress the literal text leak */
+  [data-testid="collapsedControl"] span[translate="no"],
+  [data-testid="stSidebarCollapseButton"] span[translate="no"],
+  button[kind="headerNoPadding"] span[translate="no"] {
+    font-size: 0 !important;
+    color: transparent !important;
+    visibility: hidden !important;
+  }
+  [data-tooltip]::after { display: none !important; }
+
   /* ── Global ── */
   html, body,
   [data-testid="stApp"],
@@ -254,11 +280,14 @@ _CSS_TEMPLATE = """
     color: __TEXT_LABEL__ !important;
     font-size: 0.82rem !important;
     font-weight: 500 !important;
+    text-shadow: none !important;
+    -webkit-font-smoothing: antialiased !important;
   }
 
-  /* ── Primary button ── */
+  /* ── Primary button — BUG-V2: force blue, prevent text doubling ── */
   [data-testid="stButton"] > button[kind="primary"],
-  [data-testid="stBaseButton-primary"] {
+  [data-testid="stBaseButton-primary"],
+  [data-testid="stFormSubmitButton"] > button {
     background-color: #2563EB !important;
     background: #2563EB !important;
     color: #FFFFFF !important;
@@ -269,9 +298,12 @@ _CSS_TEMPLATE = """
     padding: 0.6rem 1.8rem !important;
     letter-spacing: 0.02em !important;
     transition: background 0.15s !important;
+    text-shadow: none !important;
+    -webkit-font-smoothing: antialiased !important;
   }
   [data-testid="stButton"] > button[kind="primary"]:hover,
-  [data-testid="stBaseButton-primary"]:hover {
+  [data-testid="stBaseButton-primary"]:hover,
+  [data-testid="stFormSubmitButton"] > button:hover {
     background-color: #1D4ED8 !important;
     background: #1D4ED8 !important;
   }
@@ -282,6 +314,8 @@ _CSS_TEMPLATE = """
     background: __BG_BTN_SEC__ !important;
     border: 1px solid __BORDER_INPUT__ !important;
     border-radius: 5px !important;
+    text-shadow: none !important;
+    -webkit-font-smoothing: antialiased !important;
   }
   [data-testid="stButton"] > button:not([kind="primary"]):hover {
     border-color: __ACCENT__ !important;
@@ -395,6 +429,8 @@ _CSS_TEMPLATE = """
   [data-testid="stSidebar"] label {
     color: __TEXT_LABEL__ !important;
     font-size: 0.82rem !important;
+    text-shadow: none !important;
+    -webkit-font-smoothing: antialiased !important;
   }
 
   /* ── Theme toggle row ── */
@@ -516,7 +552,11 @@ _CSS_TEMPLATE = """
     border: 1px solid __BORDER__ !important;
     border-radius: 6px !important;
   }
-  [data-testid="stExpander"] summary { color: __TEXT_LABEL__ !important; }
+  [data-testid="stExpander"] summary {
+    color: __TEXT_LABEL__ !important;
+    text-shadow: none !important;
+    -webkit-font-smoothing: antialiased !important;
+  }
 </style>
 """
 
