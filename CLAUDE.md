@@ -72,6 +72,7 @@ All generated content must sound like a senior PE ops professional wrote it — 
 - **Web search:** Search for: company name + news, Glassdoor reviews, LinkedIn employee count/growth, industry trends, any press releases or customer mentions
 - **Output:** All briefs saved to `output/` as `{slug}_{date}.md` — this folder is gitignored
 - **Prompts:** All prompts live in `prompts/`. Modify there, not inline in code.
+- **Content drafts:** LinkedIn posts and thought leadership drafts live in `content-drafts/` (previously `~/content-drafts/`, moved 2026-04-25)
 - **Python style:** Prefer simple, readable code. No over-engineering. Functions should do one thing.
 
 ---
