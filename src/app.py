@@ -943,11 +943,120 @@ if "brief_count" not in st.session_state:
 
 
 # ---------------------------------------------------------------------------
+# Demo data — Floor & Decor platform buyout (edit here to update demo)
+# ---------------------------------------------------------------------------
+DEMO_DATA = {
+    # Tab 1 — Diligence Brief
+    "b_company_name": "Floor & Decor",
+    "b_description": (
+        "Floor & Decor is a high-growth specialty retailer of hard surface flooring "
+        "and related accessories operating 230+ warehouse-format stores across the US. "
+        "Serves both DIY consumers and professional installers (Pro segment ~50% of revenue). "
+        "Publicly traded (FND), previously PE-backed by Ares Management."
+    ),
+    "b_industry": "Specialty Retail / Home Improvement",
+    "b_ev_range": "$3.5B - $4.0B",
+    "b_deal_type": "Standard (Mfg / Services / Retail)",
+    "b_brief_style": "Bullet (~5,000 words)",
+    "b_context_notes": (
+        "Thesis: operational excellence, Pro segment acceleration, supply chain optimization, "
+        "and new store growth. Key risks: housing market exposure, execution risk on store "
+        "expansion, freight cost volatility."
+    ),
+    "b_mod_exec_summary": True,
+    "b_mod_risk_flags": True,
+    "b_mod_it_systems": True,
+    "b_mod_comps_benchmarks": False,
+    "b_mod_value_creation": True,
+    "b_mod_100_day_plan": True,
+    "b_mod_diligence_questions": False,
+    "b_mod_functional_scorecards": False,
+    "b_mod_transaction_structure": False,
+    "b_mod_change_my_view": False,
+    "b_mod_investment_recommendation": False,
+    "b_mod_lbo_model": False,
+    # Tab 2 — VCP
+    "v_company_name": "Floor & Decor",
+    "v_description": (
+        "Floor & Decor is a high-growth specialty retailer of hard surface flooring "
+        "and related accessories operating 230+ warehouse-format stores across the US. "
+        "Serves both DIY consumers and professional installers (Pro segment ~50% of revenue). "
+        "Publicly traded (FND), previously PE-backed by Ares Management."
+    ),
+    "v_industry": "Specialty Retail / Home Improvement",
+    "v_revenue": 4600.0,
+    "v_ebitda": 480.0,
+    "v_hold_period": 5,
+    "v_target_ebitda": 750.0,
+    "v_thesis": (
+        "Accelerate Pro segment penetration, optimize supply chain and inventory, "
+        "drive store productivity, and expand to 500+ locations over hold period"
+    ),
+    "v_challenges": (
+        "Housing market cyclicality, freight and import cost exposure, "
+        "Pro installer retention, store labor efficiency"
+    ),
+    "v_mod_functional_scorecards": False,
+    # Tab 3 — 100-Day Plan
+    "p_company_name": "Floor & Decor",
+    "p_industry": "Specialty Retail / Home Improvement",
+    "p_deal_type": "Platform",
+    "p_entry_ebitda": 480.0,
+    "p_target_ebitda": 750.0,
+    "p_hold_period": 5,
+    "p_thesis": (
+        "Pro segment acceleration, supply chain optimization, store productivity improvement, "
+        "500+ store expansion"
+    ),
+    "p_key_challenges": (
+        "Housing cyclicality, import tariff exposure, store labor scaling, Pro installer loyalty"
+    ),
+    "p_mgmt_assessment": (
+        "CEO Tom Taylor — strong operator, retain. CFO Trevor Lang — PE-experienced, retain. "
+        "COO role currently split — assess and potentially consolidate under single hire."
+    ),
+    "p_value_levers": (
+        "Pro segment revenue acceleration — grow Pro mix from 50% to 60%+ of revenue\n"
+        "Supply chain optimization — reduce inventory days and freight costs\n"
+        "Store productivity — improve revenue per sq ft and labor efficiency\n"
+        "New store expansion — accelerate path to 500+ locations\n"
+        "Pricing power — implement data-driven SKU-level pricing"
+    ),
+}
+
+
+# ---------------------------------------------------------------------------
 # Sidebar — Theme toggle · Tier gate · Model Quality · Data Sources
 # ---------------------------------------------------------------------------
 
 with st.sidebar:
     tier = st.session_state["tier"]
+
+    # ── Demo Mode button ─────────────────────────────────────────────────────
+    if st.button(
+        "⚡ Load Demo: Floor & Decor",
+        type="primary",
+        use_container_width=True,
+        key="demo_load_btn",
+    ):
+        for k, v in DEMO_DATA.items():
+            st.session_state[k] = v
+        st.session_state.pop("p_levers_prefilled", None)
+        st.session_state["demo_loaded"] = True
+        st.rerun()
+    st.markdown(
+        '<p style="color:#6b7090;font-size:0.75rem;margin:-0.4rem 0 0.2rem 0;'
+        'text-align:center;">Pre-fills all tabs with a live deal example</p>',
+        unsafe_allow_html=True,
+    )
+    if st.button("Clear Demo", key="demo_clear_btn", use_container_width=False):
+        for k in DEMO_DATA:
+            st.session_state.pop(k, None)
+        st.session_state.pop("demo_loaded", None)
+        st.session_state.pop("p_levers_prefilled", None)
+        st.rerun()
+
+    st.markdown('<hr class="sidebar-divider">', unsafe_allow_html=True)
 
     # ── Theme toggle (top of sidebar) ────────────────────────────────────────
     toggle_label = "Light mode" if not st.session_state.get("sb_theme_toggle") else "Dark mode"
@@ -1090,6 +1199,9 @@ st.markdown("""
   <p>Middle market buyout · Operational intelligence and value creation planning</p>
 </div>
 """, unsafe_allow_html=True)
+
+if st.session_state.get("demo_loaded"):
+    st.success("✓ Demo loaded — Floor & Decor platform buyout. Select a tab and click Generate.")
 
 
 # ---------------------------------------------------------------------------
