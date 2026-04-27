@@ -39,19 +39,19 @@ Assess:
 ## 3. IT & Systems Maturity
 
 **ERP/Core Systems**
-{Hypothesis + directional assessment}
+{{Hypothesis + directional assessment}}
 
 **Reporting & Data Maturity**
-{Assessment}
+{{Assessment}}
 
-**Tech Debt Risk:** {Low/Medium/High}
-{Assessment}
+**Tech Debt Risk:** {{Low/Medium/High}}
+{{Assessment}}
 
 **Digital/AI Enablement Potential**
-{What's realistic in 3–5 year hold}
+{{What's realistic in 3–5 year hold}}
 
 **Systems Diligence Checklist**
-1. {Question}
-2. {Question}
+1. {{Question}}
+2. {{Question}}
 ...
 ```

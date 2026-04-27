@@ -47,25 +47,25 @@ Summarize findings in this structure:
 **Sources consulted:** [list URLs]
 
 **Ownership & History**
-{Findings}
+{{Findings}}
 
 **People & Culture**
-{Findings — include Glassdoor rating if found}
+{{Findings — include Glassdoor rating if found}}
 
 **Operations**
-{Findings}
+{{Findings}}
 
 **Customers & Market**
-{Findings}
+{{Findings}}
 
 **Technology**
-{Findings}
+{{Findings}}
 
 **Red Flags Identified**
-{Any concerning signals found in research}
+{{Any concerning signals found in research}}
 
 **Key Unknowns**
-{What you couldn't find that matters}
+{{What you couldn't find that matters}}
 ```
 
 If a category yields no useful information, state "No public data found — assess in diligence" and move on.

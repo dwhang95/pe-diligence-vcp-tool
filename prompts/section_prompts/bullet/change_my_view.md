@@ -32,12 +32,12 @@ Downgrades: confirmed in diligence → thesis impaired or deal breaks.
 ## What Would Change My View
 
 ### Upgrades
-- {Specific falsifiable condition → what it means for the thesis — max 25 words}
-- {Specific falsifiable condition → what it means for the thesis — max 25 words}
-- {Specific falsifiable condition → what it means for the thesis — max 25 words}
+- {{Specific falsifiable condition → what it means for the thesis — max 25 words}}
+- {{Specific falsifiable condition → what it means for the thesis — max 25 words}}
+- {{Specific falsifiable condition → what it means for the thesis — max 25 words}}
 
 ### Downgrades
-- {Specific falsifiable condition → what it means for the thesis — max 25 words}
-- {Specific falsifiable condition → what it means for the thesis — max 25 words}
-- {Specific falsifiable condition → what it means for the thesis — max 25 words}
+- {{Specific falsifiable condition → what it means for the thesis — max 25 words}}
+- {{Specific falsifiable condition → what it means for the thesis — max 25 words}}
+- {{Specific falsifiable condition → what it means for the thesis — max 25 words}}
 ```

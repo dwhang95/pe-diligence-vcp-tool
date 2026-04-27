@@ -40,12 +40,12 @@ Organize by theme with a theme header for each group of 2–3 questions.
 ## 6. Key Diligence Questions
 
 ### Management & Organization
-1. {Question}
-2. {Question}
+1. {{Question}}
+2. {{Question}}
 
 ### Customer & Revenue Quality
-3. {Question}
-4. {Question}
+3. {{Question}}
+4. {{Question}}
 
 ### Operations & Infrastructure
 ...

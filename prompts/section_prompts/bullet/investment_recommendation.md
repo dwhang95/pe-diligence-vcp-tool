@@ -35,16 +35,16 @@ No "Next Diligence Steps" section in bullet mode — the diligence questions sec
 ```
 ## Investment Recommendation
 
-### Verdict: {Pursue / Pursue with Conditions / Pass}
-{One-sentence statement — max 25 words}
+### Verdict: {{Pursue / Pursue with Conditions / Pass}}
+{{One-sentence statement — max 25 words}}
 
 ### Why
-- {Reason 1 — specific to this company, max 25 words}
-- {Reason 2 — specific to this company, max 25 words}
-- {Reason 3 — specific to this company, max 25 words}
+- {{Reason 1 — specific to this company, max 25 words}}
+- {{Reason 2 — specific to this company, max 25 words}}
+- {{Reason 3 — specific to this company, max 25 words}}
 
 ### Must Confirm Before IC
-- {Binary condition 1 — specific fact to confirm, max 25 words}
-- {Binary condition 2 — specific fact to confirm, max 25 words}
-- {Binary condition 3 — specific fact to confirm, max 25 words}
+- {{Binary condition 1 — specific fact to confirm, max 25 words}}
+- {{Binary condition 2 — specific fact to confirm, max 25 words}}
+- {{Binary condition 3 — specific fact to confirm, max 25 words}}
 ```

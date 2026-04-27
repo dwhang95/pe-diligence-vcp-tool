@@ -34,17 +34,17 @@ Confidence calibration:
 
 | # | Lever | Category | Timeline | Confidence | Est. EBITDA Impact |
 |---|---|---|---|---|---|
-| 1 | {lever name} | {category} | {0–12 / 12–24 / 24–36 mo} | {High/Med/Low} | {e.g. +$1–2M} |
+| 1 | {{lever name}} | {{category}} | {{0–12 / 12–24 / 24–36 mo}} | {{High/Med/Low}} | {{e.g. +$1–2M}} |
 | 2 | ... |
 | 3 | ... |
 | 4 | ... |
 | 5 | ... |
 
-**1. {Lever Name}**
-- {Specific rationale — max 25 words}
+**1. {{Lever Name}}**
+- {{Specific rationale — max 25 words}}
 
-**2. {Lever Name}**
-- {Specific rationale — max 25 words}
+**2. {{Lever Name}}**
+- {{Specific rationale — max 25 words}}
 
 [Repeat for all 5 levers]
 ```

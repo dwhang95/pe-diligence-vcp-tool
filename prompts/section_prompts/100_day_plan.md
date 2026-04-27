@@ -49,11 +49,11 @@ Generate a 100-day plan outline that is specific to this company — not a gener
 ## 5. 100-Day Plan Outline Starter
 
 ### Days 1–30: Listen & Diagnose
-- {Bullet 1}
-- {Bullet 2}
-- {Bullet 3}
-- {Bullet 4}
-- {Bullet 5}
+- {{Bullet 1}}
+- {{Bullet 2}}
+- {{Bullet 3}}
+- {{Bullet 4}}
+- {{Bullet 5}}
 
 ### Days 31–60: Align & Plan
 ...

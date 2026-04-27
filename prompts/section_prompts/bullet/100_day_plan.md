@@ -30,17 +30,17 @@ Each phase: max 3 bullets, each referencing actual risks or levers identified ab
 ## 5. 100-Day Plan Outline Starter
 
 ### Days 1–30: Listen & Diagnose
-- {Specific listening/diagnostic action tied to this company — max 25 words}
-- {Specific listening/diagnostic action tied to this company — max 25 words}
-- {Specific listening/diagnostic action tied to this company — max 25 words}
+- {{Specific listening/diagnostic action tied to this company — max 25 words}}
+- {{Specific listening/diagnostic action tied to this company — max 25 words}}
+- {{Specific listening/diagnostic action tied to this company — max 25 words}}
 
 ### Days 31–60: Align & Quick Wins
-- {Specific workstream or quick win tied to a lever or risk — max 25 words}
-- {Specific workstream or quick win tied to a lever or risk — max 25 words}
-- {Governance/reporting setup action — max 25 words}
+- {{Specific workstream or quick win tied to a lever or risk — max 25 words}}
+- {{Specific workstream or quick win tied to a lever or risk — max 25 words}}
+- {{Governance/reporting setup action — max 25 words}}
 
 ### Days 61–100: Execute & Report
-- {First deliverable from priority workstream — max 25 words}
-- {KPI baseline or board reporting action — max 25 words}
-- {Year 1 plan handoff or transition action — max 25 words}
+- {{First deliverable from priority workstream — max 25 words}}
+- {{KPI baseline or board reporting action — max 25 words}}
+- {{Year 1 plan handoff or transition action — max 25 words}}
 ```

@@ -31,13 +31,13 @@ No diligence questions in this section.
 ```
 ## 2. Operational Risk Flags
 
-### {Risk Name} — {Low/Medium/High/Critical}
-- {Finding: what the risk is — max 25 words}
-- {Implication: what this means for the thesis or close conditions — max 25 words}
+### {{Risk Name}} — {{Low/Medium/High/Critical}}
+- {{Finding: what the risk is — max 25 words}}
+- {{Implication: what this means for the thesis or close conditions — max 25 words}}
 
-### {Risk Name} — {Low/Medium/High/Critical}
-- {Finding}
-- {Implication}
+### {{Risk Name}} — {{Low/Medium/High/Critical}}
+- {{Finding}}
+- {{Implication}}
 
 [Repeat — max 5 risks]
 ```

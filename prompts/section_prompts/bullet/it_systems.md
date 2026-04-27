@@ -31,15 +31,15 @@ Each finding = 1 header + 1–2 bullets max. No diligence checklist in bullet mo
 ## 3. IT & Systems Maturity
 
 **ERP/Core Systems**
-- {Hypothesis on system — max 25 words}
-- {Key risk or implication — max 25 words}
+- {{Hypothesis on system — max 25 words}}
+- {{Key risk or implication — max 25 words}}
 
 **Reporting & Data Maturity**
-- {Finding + implication — max 25 words}
+- {{Finding + implication — max 25 words}}
 
-**Tech Debt Risk: {Low/Medium/High}**
-- {Finding + implication — max 25 words}
+**Tech Debt Risk: {{Low/Medium/High}}**
+- {{Finding + implication — max 25 words}}
 
 **Digital/AI Enablement Potential**
-- {What's realistic in hold period — max 25 words}
+- {{What's realistic in hold period — max 25 words}}
 ```

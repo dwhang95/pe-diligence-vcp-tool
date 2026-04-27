@@ -25,14 +25,14 @@ Cover the highest-priority themes from: management depth / key-man, customer rel
 ```
 ## 6. Key Diligence Questions
 
-1. {Question — specific, 1 line, max 30 words}
-2. {Question — specific, 1 line, max 30 words}
-3. {Question — specific, 1 line, max 30 words}
-4. {Question — specific, 1 line, max 30 words}
-5. {Question — specific, 1 line, max 30 words}
-6. {Question — specific, 1 line, max 30 words}
-7. {Question — specific, 1 line, max 30 words}
-8. {Question — specific, 1 line, max 30 words}
-9. {Question — specific, 1 line, max 30 words}
-10. {Question — specific, 1 line, max 30 words}
+1. {{Question — specific, 1 line, max 30 words}}
+2. {{Question — specific, 1 line, max 30 words}}
+3. {{Question — specific, 1 line, max 30 words}}
+4. {{Question — specific, 1 line, max 30 words}}
+5. {{Question — specific, 1 line, max 30 words}}
+6. {{Question — specific, 1 line, max 30 words}}
+7. {{Question — specific, 1 line, max 30 words}}
+8. {{Question — specific, 1 line, max 30 words}}
+9. {{Question — specific, 1 line, max 30 words}}
+10. {{Question — specific, 1 line, max 30 words}}
 ```

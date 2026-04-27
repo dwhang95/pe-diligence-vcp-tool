@@ -38,13 +38,13 @@ Focus on: top customer dependency (>20% = flag, >40% = high risk), contract stru
 ```
 ## 2. Operational Risk Flags
 
-### A. People & Organization — {Risk Level}
-{Hypothesis}
+### A. People & Organization — {{Risk Level}}
+{{Hypothesis}}
 
 **Diligence questions:**
-- {Question 1}
-- {Question 2}
+- {{Question 1}}
+- {{Question 2}}
 
-### B. Operational Infrastructure — {Risk Level}
+### B. Operational Infrastructure — {{Risk Level}}
 ...
 ```

@@ -55,12 +55,12 @@ If news data is empty or minimal, write one sentence acknowledging this and redi
 ```
 ### Part A: Public Comp Context
 
-**SIC/Industry:** {sic code and label}
+**SIC/Industry:** {{sic code and label}}
 
-{comp table — paste exactly from input, do not modify numbers}
+{{comp table — paste exactly from input, do not modify numbers}}
 
 **Benchmark interpretation:**
-{2–3 sentences on what the margins, labor costs, and CapEx intensity imply for this target's profile}
+{{2–3 sentences on what the margins, labor costs, and CapEx intensity imply for this target's profile}}
 
 *Note: Public comps skew larger than typical middle-market targets. Use as directional context, not absolute benchmarks.*
 
@@ -68,9 +68,9 @@ If news data is empty or minimal, write one sentence acknowledging this and redi
 
 ### Part B: News Sweep Signals
 
-{3–5 bullet summary of material news signals}
+{{3–5 bullet summary of material news signals}}
 
-**News data gap note:** {if applicable — what couldn't be found and why it matters}
+**News data gap note:** {{if applicable — what couldn't be found and why it matters}}
 ```
 
 Do not add a section header like "## 3. Comparable Companies & Benchmarks" — the template provides that.

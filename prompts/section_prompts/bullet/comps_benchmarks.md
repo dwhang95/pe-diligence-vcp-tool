@@ -42,24 +42,24 @@ Max 4 bullets. Elevate anything mapping to a risk flag: leadership change, regul
 ```
 ### Part A: Public Comp Context
 
-**SIC/Industry:** {sic code and label}
+**SIC/Industry:** {{sic code and label}}
 
-{comp table — paste exactly from input}
+{{comp table — paste exactly from input}}
 
 *Public comps skew larger than typical middle-market targets. Directional context only.*
 
-- {Margin implication — max 25 words}
-- {Labor/wage implication — max 25 words}
-- {CapEx or multiple implication — max 25 words}
+- {{Margin implication — max 25 words}}
+- {{Labor/wage implication — max 25 words}}
+- {{CapEx or multiple implication — max 25 words}}
 
 ---
 
 ### Part B: News Sweep Signals
 
-- {Signal 1 — max 25 words}
-- {Signal 2 — max 25 words}
-- {Signal 3 — max 25 words}
-- {Signal 4 or gap note — max 25 words}
+- {{Signal 1 — max 25 words}}
+- {{Signal 2 — max 25 words}}
+- {{Signal 3 — max 25 words}}
+- {{Signal 4 or gap note — max 25 words}}
 ```
 
 Do not add a section header like "## 3. Comparable Companies & Benchmarks" — the template provides that.

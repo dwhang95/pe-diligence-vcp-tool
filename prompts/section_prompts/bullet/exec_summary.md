@@ -31,12 +31,12 @@ Write exactly 2 lines of intro (operational snapshot: what they do, how they mak
 ```
 ## 1. Executive Summary
 
-{Line 1: what the company does, operational lens.}
-{Line 2: how they make money and key ops characteristic.}
+{{Line 1: what the company does, operational lens.}}
+{{Line 2: how they make money and key ops characteristic.}}
 
-- **Operational Profile:** {classification} — {one implication, max 15 words}
-- **Labor Intensity:** {High/Medium/Low} — {one implication, max 15 words}
-- **Tech Dependency:** {High/Medium/Low} — {one implication, max 15 words}
-- **Overall Ops Risk: {Low/Medium/High/Critical}** — {1-line justification, max 20 words}
-- **Key Open Question:** {the single most important thing diligence must resolve, max 20 words}
+- **Operational Profile:** {classification} — {{one implication, max 15 words}}
+- **Labor Intensity:** {{High/Medium/Low}} — {{one implication, max 15 words}}
+- **Tech Dependency:** {{High/Medium/Low}} — {{one implication, max 15 words}}
+- **Overall Ops Risk: {{Low/Medium/High/Critical}}** — {{1-line justification, max 20 words}}
+- **Key Open Question:** {{the single most important thing diligence must resolve, max 20 words}}
 ```

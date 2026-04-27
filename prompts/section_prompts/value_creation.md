@@ -40,14 +40,14 @@ Identify 4–8 operational value creation levers specific to this company. Prior
 
 | Priority | Lever | Category | Timeline | Confidence |
 |---|---|---|---|---|
-| 1 | {description} | {category} | {0–12 / 12–24 / 24–36 mo} | {High/Med/Low} |
+| 1 | {{lever name}} | {{category}} | {{0–12 / 12–24 / 24–36 mo}} | {{High/Med/Low}} |
 ...
 
 ### Lever Detail
 
-**1. {Lever Name}**
-{2–3 sentence rationale}
+**1. {{Lever Name}}**
+{{2–3 sentence rationale}}
 
-**2. {Lever Name}**
+**2. {{Lever Name}}**
 ...
 ```

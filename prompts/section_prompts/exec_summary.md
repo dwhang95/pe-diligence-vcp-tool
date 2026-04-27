@@ -31,12 +31,12 @@ Justify the rating in 1–2 sentences. Be direct. Don't hedge.
 ```
 ## 1. Executive Summary
 
-{3–5 sentence snapshot}
+{{3–5 sentence snapshot}}
 
 **Operational Profile:** {classification}
-**Labor Intensity:** {High/Medium/Low} — {one-line implication}
-**Tech Dependency:** {High/Medium/Low} — {one-line implication}
+**Labor Intensity:** {{High/Medium/Low}} — {{one-line implication}}
+**Tech Dependency:** {{High/Medium/Low}} — {{one-line implication}}
 
-**Overall Ops Risk Rating: {Low/Medium/High/Critical}**
-{1–2 sentence justification}
+**Overall Ops Risk Rating: {{Low/Medium/High/Critical}}**
+{{1–2 sentence justification}}
 ```
